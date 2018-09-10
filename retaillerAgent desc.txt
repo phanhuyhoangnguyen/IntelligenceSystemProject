@@ -1,0 +1,28 @@
+Properties
+----------
+
+usageCharge
+overCharge
+exitCharge
+dailyCharge
+
+buyPrice
+buyAmount
+
+contractConsumption = 1000Kwh
+usageConsumption = (send request per week)
+
+
+Methods
+-------
+generateOverCharge()
+
+getQuote (consumption kwh): cost
+
+negotiate (cost per kwh): deny/accept
+
+requestUsage(): send request to Home agent to get the consumption 
+informUsage(): inform to Home
+
+
+buyElectricity();
