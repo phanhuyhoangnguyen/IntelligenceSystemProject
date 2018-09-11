@@ -1,0 +1,21 @@
+// -- Properties --
+- energyUsage					// kWh
+- status					// turned on/off
+- startTime					// track the actual using time -> for energy consumption prediction later
+- endTime
+						// can have totalUsage for store total energy consumption for a day, this will remove the startTime, endTime 
+						// -> however, this will reduce the precise of energy consumption tracking
+
+// -- Method --
+- executeSmartBehaviour()			// automatically turn on/off - Optional
+
+
++ getEnergyUsage()				// calculate the total and return energy usage per hour
+
+- calculateEnergyUsageTotal(startTime, endTime)	// for database update: can be used to update many times in a day
+
+- updateUsageToDatabase()			// connect to database and update: automatically when a day ends or before it is switched off
+
++ estimateElectricity()
+
++ produceEnergy()				// for solar panel return interger: 0 -> no Energy produce
