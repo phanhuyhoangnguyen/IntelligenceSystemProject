@@ -14,9 +14,12 @@ public class Main {
 	public static void main(String[] args) {
 		System.out.println("Main Class running.");
 		
+		// create Retailler Table for test
+		RetaillerAgent retailler = new RetaillerAgent();
+		retailler.createTable();
 		
 		// Test Database
-		testDatabase();
+		//testDatabase();
 		
 		System.out.println("Main Class finished.");
 	}
