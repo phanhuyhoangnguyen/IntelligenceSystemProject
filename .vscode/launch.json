@@ -1,0 +1,322 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Debug (Launch)",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "",
+            "args": ""
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-Main<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "EnergyAgents.Main",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-Boot<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.Boot",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-Boot3<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.Boot3",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-MicroBoot<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.MicroBoot",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-ExtendedSLParser<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.content.lang.sl.ExtendedSLParser",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-SLCodec<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.content.lang.sl.SLCodec",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-SLParser<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.content.lang.sl.SLParser",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-ScalabilityTest<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.core.ScalabilityTest",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-MessageManager<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.core.messaging.MessageManager",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-IntrospectionOntology<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.domain.introspection.IntrospectionOntology",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-NATUtils<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.imtp.leap.JICP.NATUtils",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-Boot<EnergyTradingSystem>(1)",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.imtp.leap.sms.Boot",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-SMSManagerGui<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.imtp.leap.sms.SMSManagerGui",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-ACLParser<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.lang.acl.ACLParser",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-ISO8601<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.lang.acl.ISO8601",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-DummyAgent<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.tools.DummyAgent.DummyAgent",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-ACLTimeChooserDialog<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.tools.gui.ACLTimeChooserDialog",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-SLFormatter<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.tools.sl.SLFormatter",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-TestAgent<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.tools.testagent.TestAgent",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-ExtendedProperties<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.util.ExtendedProperties",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-Toolkit<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.util.Toolkit",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-RoundList<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.util.leap.RoundList",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-AgentState<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.wrapper.AgentState",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-PlatformState<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.wrapper.PlatformState",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-OSInfo<EnergyTradingSystem>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "org.sqlite.util.OSInfo",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-HomeReporterAgent",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.Boot",
+            "args": "-container -agents HomeReporterAgent:EnergyAgents.HomeReporterAgent;",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-HomeAgent",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.Boot",
+            "args": "-gui -agents HomeAgent:EnergyAgents.HomeAgent;",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Attach)",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": "<debug port of remote debuggee>"
+        }
+    ]
+}
