@@ -1,0 +1,62 @@
+TODO:
+(a) combine the total demand (and supply) of the appliacnces
+    _get the total demand from appliacnces
+    _get the total supply from appliacnces
+
+(b) query a number of the retailer agents for their selling/ buying prices, and then, based on the responses
+    _send messages to retailer agents for their selling prices
+    _send messages to retailer agents for their buying prices
+
+(c) select retailer agent/s that offer the best outcome
+
+    _calculate to choose the best outcome
+
+    HomeReporterAgent
+    {
+       //This agent will get the all the demands from AAs and then combine and send the total demand to home agent
+
+        1. Get the demand from all AAs
+        3. Combine all the demands
+        2. Send the total demands
+    }
+
+    Home Agent
+    {
+        //This agent will calculate the demand/ supplys and decide to choose the right offers.
+
+        1.Get the demand    
+        2.Send the demand to RAs
+        3.Get offers from RAs
+        4.Compare with the budget
+        5.Response
+    }
+
+
+/**********Properties*********/
+-budget
+
+/*Retailer*/
+
+
+/*Appliance*/
+-demand 
+
+
+/**********Method*********/
+
+/*Appliance*/
+takeDemand()
+
+/*Retailer*/
+
++buy()
+
++sell()
+
+processedOffer()
++sendOffer()
+
++negotitate() 
+
++calculatePrice()
+

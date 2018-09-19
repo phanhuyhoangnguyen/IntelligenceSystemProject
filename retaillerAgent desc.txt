@@ -3,8 +3,8 @@ Properties
 
 usageCharge
 overCharge
-exitCharge
-dailyCharge
+// exitCharge
+// dailyCharge
 
 buyPrice
 buyAmount
