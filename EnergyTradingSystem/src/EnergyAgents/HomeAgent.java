@@ -3,6 +3,7 @@ package EnergyAgents;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.*;
 import jade.domain.FIPAException;
@@ -28,7 +29,7 @@ public class HomeAgent extends Agent
      */
     private void init()
     {
-        this.totalEnergyConsumption = 1000;
+        this.totalEnergyConsumption = 0;
         this.budgetLimit = 75;
         agentName = "Home";
         agentName = "Home";
@@ -54,7 +55,7 @@ public class HomeAgent extends Agent
         
 
         //Add behaviours
-        addBehaviour(new ReceiveTotalDemand());
+        addBehaviour(new ReceiveDemand());
     }
 
     /**
@@ -99,13 +100,23 @@ public class HomeAgent extends Agent
     /**
      * Receive demand from Appliances
      */
-    private class ReceiveTotalDemand extends CyclicBehaviour{
+    private class ReceiveDemand extends CyclicBehaviour{
         public void action(){
             System.out.println(getLocalName() + ": waiting for message");
-            ACLMessage msg = receive();
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+            ACLMessage msg = receive(mt);
             if(msg!= null){
+                String demand, receiver, sender;
+                
+                demand = msg.getContent();
+                receiver = getLocalName();
+                sender = msg.getSender().getLocalName();
+
                 //Print message content
-                System.out.println(getLocalName() + ": received response " + msg.getContent() + " from " + msg.getSender().getLocalName());
+                System.out.println(receiver + ": received response " + demand + " from " + sender);
+                totalEnergyConsumption += Float.parseFloat(demand);
+                System.out.println("Total consumption: " + totalEnergyConsumption);
+                System.out.println("**********************************************");
             }
             //Continue listening
             block();
