@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import EnergyAgents.RetailerAgent;
+
 
 import database.DbHelper;
 
@@ -15,8 +17,8 @@ public class Main {
 		System.out.println("Main Class running.");
 		
 		// create Retailler Table for test
-		RetaillerAgent retailler = new RetaillerAgent();
-		retailler.createTable();
+		RetailerAgent retailer = new RetailerAgent();
+		retailer.createTable();
 		
 		// Test Database
 		//testDatabase();
