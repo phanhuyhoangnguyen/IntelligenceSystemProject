@@ -13,7 +13,7 @@ public class ApplianceEnergyProducerAgent extends ApplianceAgent implements Ener
 	private double energyDefaultProduction;
 	private double energyActualProduction;
 	
-	protected void setup(int applicantID, double energyDefaultUsage, double energyDefaultProduction) {	// these data is taken from database and passed in from parameters
+	protected void setup(String applicantID, double energyDefaultUsage, double energyDefaultProduction) {	// these data is taken from database and passed in from parameters
 		setApplicantID(applicantID);
 		setEnergyDefaultUsage(energyDefaultUsage);
 		this.energyDefaultProduction = energyDefaultProduction;
