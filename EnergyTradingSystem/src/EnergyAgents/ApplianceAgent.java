@@ -4,6 +4,9 @@ import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.TickerBehaviour;
+import jade.domain.AMSService;
+import jade.domain.FIPAAgentManagement.AMSAgentDescription;
+import jade.domain.FIPAAgentManagement.SearchConstraints;
 import jade.lang.acl.ACLMessage;
 
 import java.text.ParseException;
@@ -63,7 +66,7 @@ public class ApplianceAgent extends Agent {
     		    // Send messages to home agents
     		    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
     		    msg.setContent(Double.toString(energyActualUsage));
-    		    msg.addReceiver(new AID("homeAgent", AID.ISLOCALNAME) );
+    		    msg.addReceiver(new AID("Home", AID.ISLOCALNAME) );
     		    
     		    // Send Message
     		    System.out.println(getLocalName() + ": Sending message " + msg.getContent() + " to ");
