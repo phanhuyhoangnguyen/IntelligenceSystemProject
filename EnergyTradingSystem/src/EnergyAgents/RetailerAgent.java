@@ -169,14 +169,14 @@ public class RetailerAgent extends Agent {
 						reply.setPerformative(ACLMessage.PROPOSE);
 						reply.setContent(Double.toString(negoPrice));
 						break;
-						
+					//In negotiation stage	
 					case ACLMessage.PROPOSE:
 						System.out.println( agentName + " sends counter offer for " + negoPrice);
 						reply.setPerformative(ACLMessage.PROPOSE);
 						reply.setContent(Double.toString(negoPrice));
 						// TODO: counter offer
 						break;
-						
+					//Home agent accept the offer
 					case ACLMessage.ACCEPT_PROPOSAL:
 					case ACLMessage.AGREE:
 						System.out.println( agentName + " thank for your support.");
@@ -184,7 +184,8 @@ public class RetailerAgent extends Agent {
 						reply.setPerformative(ACLMessage.AGREE);
 						reply.setContent(Double.toString(usageCharge));
 						break;
-						
+					
+					//Home agent accept the offer
 					case ACLMessage.REJECT_PROPOSAL:
 					case ACLMessage.REFUSE:
 						System.out.println( agentName + " sorry to hear that. ");

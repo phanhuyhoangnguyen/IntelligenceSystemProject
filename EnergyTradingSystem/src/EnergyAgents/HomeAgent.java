@@ -35,7 +35,7 @@ public class HomeAgent extends Agent
         this.totalEnergyConsumption = 0;
         this.budgetLimit = 75;
         agentName = "Home";
-        agentName = "Home";
+        agentType = "Home";
     }
 
     public HomeAgent()
@@ -102,6 +102,7 @@ public class HomeAgent extends Agent
         }
     }
 
+    //Search service from DF
     AID[] getRetailerAgents(String serviceType)
     {
         DFAgentDescription dfd = new DFAgentDescription();
@@ -129,7 +130,7 @@ public class HomeAgent extends Agent
      */
     private class ReceiveDemand extends CyclicBehaviour{
         public void action(){
-            System.out.println(getLocalName() + ": waiting for message");
+            System.out.println(getLocalName() + ": waiting for demand from Applicant Agents");
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
             ACLMessage msg = receive(mt);
             if(msg!= null){
@@ -149,6 +150,30 @@ public class HomeAgent extends Agent
             block();
         }
     }
+    //TODO: start from here
+    /**
+     * Negotitate with Retailer Agents
+     */
+    private class negotiateContract extends CyclicBehaviour{
+        public void action(){
+            System.out.println(getLocalName() + ": begin negotiate with Retailer Agents ");
+            ACLMessage msg = receive();
+
+            if(msg != null){
+                //get sender information
+                String offer, receiver, sender;
+                
+                offer = msg.getContent();
+                receiver = getLocalName();
+                sender = msg.getSender().getLocalName();
+
+                System.out.println(receiver + ": received response " + offer + " from " + sender);
+                
+            }
+            //Continue listening 
+            block();
+        }
+    }
 
     /**
      * Test Behaviour
@@ -159,12 +184,15 @@ public class HomeAgent extends Agent
         public void action(){
             AID[] aids = getRetailerAgents("Retailer");
             System.out.println("Retailer agents total number:" + aids.length);
-            for(AID a : aids){
-                System.out.println(a.getLocalName());
+            for(AID aid : aids){
+                System.out.println(aid.getLocalName());
                 System.out.println("----------------------------------------");
-            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-            msg.setContent("Hello");
-            myAgent.send(msg);
+            
+                //Send message
+                ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+                msg.addReceiver(aid);
+                msg.setContent("Hello");
+                myAgent.send(msg);
             }
         }
     }
