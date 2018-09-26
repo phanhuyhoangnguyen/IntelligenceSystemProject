@@ -1,36 +1,13 @@
 package EnergyAgentGUI.views;
 
-import java.awt.BorderLayout;
-import java.awt.EventQueue;
-import java.awt.FlowLayout;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent; 
-import java.awt.event.ItemListener;
-import javax.swing.Icon; 
-import javax.swing.ImageIcon; 
-import javax.swing.JComboBox; 
-import javax.swing.JLabel;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
-import javax.swing.JRadioButton;
-import javax.swing.JButton;
-import javax.swing.GroupLayout;
-import javax.swing.GroupLayout.Alignment;
-import javax.swing.JSpinner;
-import javax.swing.JFormattedTextField;
-import javax.swing.JTextField;
-import javax.swing.LayoutStyle.ComponentPlacement;
-import javax.swing.JTextArea;
-import javax.swing.JTextPane;
-import javax.swing.SwingConstants;
-import java.awt.Color;
-import javax.swing.JSeparator;
-import java.awt.SystemColor;
-import java.awt.Font;
+import java.awt.event.*;
+import java.awt.*;
+import javax.swing.*;
+import javax.swing.GroupLayout.*;
+import javax.swing.LayoutStyle.*;
+import javax.swing.border.*;
 
-public class homeActivityGUI extends JFrame {
+public class homeActivityGUI extends JFrame implements ActionListener  {
 
 	private JPanel contentPane;
 	JLabel appliant_agent_list = new JLabel("");
@@ -197,5 +174,11 @@ public class homeActivityGUI extends JFrame {
 	{
 		appliant_agent_list.setBackground(Color.LIGHT_GRAY);
 		appliant_agent_list.setText("<html>Agent 1 predict : 100<br><br> Agent 2 predict : 200 <br> <br>Agent 3 predict : 300</html>");
+	}
+
+	@Override
+	public void actionPerformed(ActionEvent e) {
+		// TODO Auto-generated method stub
+		
 	}
 }
