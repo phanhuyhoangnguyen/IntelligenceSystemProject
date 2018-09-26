@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.domain.DFService;
@@ -16,7 +17,9 @@ import jade.lang.acl.MessageTemplate;
 import database.DbHelper;
 
 /**
- * Retailer Agent 
+ * Retailer Agent: 
+ * Response to any requests from single Home agent
+ * 
  * @author Tola
  *
  */
@@ -33,7 +36,7 @@ public class RetailerAgent extends Agent {
 	private double overCharge;
 	
 	
-	// negotiation
+	// negotiation, price in cent per KWH, time in second
 	// negotiation price for every iteration
 	private double negoPrice;
 	// negotiation mechanism: by time, on demand
@@ -42,13 +45,14 @@ public class RetailerAgent extends Agent {
 	private double negoLimit;
 	// limit counter offer
 	private int negoCounter;
+	// negotiation timeout in second
+	private long negoTimeout;
 	
 	// list map of home agent in the contract, by AID and Name
-	// TODO: may use list
-	private HashMap<String, String> homeAgents; 
+	private Map<AID,Date> homeAgents; 
 		
 	
-	// if the agent can buy power from home agent such as solar
+	// if the agent can buy power from a home agent (only one) such as solar
 	private String buyFrom;
 	private double buyAmount;
 	private double buyPrice;
@@ -73,13 +77,14 @@ public class RetailerAgent extends Agent {
 		negoLimit = 20.0;
 		negoMechanism = "general";
 		negoCounter = 3;
+		negoTimeout = 60; // 1 minute
 		
 		buyFrom = null;
 		buyAmount = 0.0;
 		buyPrice = 0.0;
 		buyDate = null;
 		
-		this.homeAgents = new HashMap<>();
+		homeAgents = new HashMap<>();
 		
 	}
 	
@@ -113,7 +118,7 @@ public class RetailerAgent extends Agent {
 		}
 		
 		// add behaviour to accept the offer
-		addBehaviour(new ServeOffer());
+		addBehaviour(new ServicesBehaviour());
 		
 		guiShow();
 	}
@@ -139,42 +144,74 @@ public class RetailerAgent extends Agent {
 	 * waiting for any request from home agent
 	 * 
 	 */
-	private class ServeOffer extends CyclicBehaviour {
+	private class ServicesBehaviour extends CyclicBehaviour {
 		public void action() {
-			MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
-			ACLMessage msg = myAgent.receive(mt);
+			// Receive all messages
+			ACLMessage msg = myAgent.receive();
+			
+			// There is a message
 			if (msg != null) {
-				System.out.println( agentName + " offer received: " + msg);
-				// CFP Message received. Process it
-				String info = msg.getContent();
-				// TODO: what info from the sender??
-				// total amount ?, price?
 				
+				// get sender AID
+				AID sender = msg.getSender();
+				String senderName = sender.getLocalName();
+				System.out.println( agentName + " receives message from " + sender);
 				
+			
+				// create a reply message
 				ACLMessage reply = msg.createReply();
-	
-				// check negotiate mechanism
-				boolean match = false;
 				
-				if (match) {
-					reply.setPerformative(ACLMessage.PROPOSE);
-					// TODO: how to reply to the home agent
-					reply.setContent("???");
-				} else {
-					// not match
-					System.out.println( agentName + " refuse the offer ");
-					reply.setPerformative(ACLMessage.REFUSE);
-					reply.setContent("not-available");
+				// correspondent for individual response from home agent
+				switch(msg.getPerformative()) {
+					case ACLMessage.REQUEST:
+					case ACLMessage.QUERY_REF:
+						System.out.println( agentName + " sends the first offer for " + negoPrice);
+						reply.setPerformative(ACLMessage.PROPOSE);
+						reply.setContent(Double.toString(negoPrice));
+						break;
+						
+					case ACLMessage.PROPOSE:
+						System.out.println( agentName + " sends counter offer for " + negoPrice);
+						reply.setPerformative(ACLMessage.PROPOSE);
+						reply.setContent(Double.toString(negoPrice));
+						// TODO: counter offer
+						break;
+						
+					case ACLMessage.ACCEPT_PROPOSAL:
+					case ACLMessage.AGREE:
+						System.out.println( agentName + " thank for your support.");
+						// TODO: sign new contract
+						reply.setPerformative(ACLMessage.AGREE);
+						reply.setContent(Double.toString(usageCharge));
+						break;
+						
+					case ACLMessage.REJECT_PROPOSAL:
+					case ACLMessage.REFUSE:
+						System.out.println( agentName + " sorry to hear that. ");
+						reply.setPerformative(ACLMessage.INFORM);
+						reply.setContent("sorry to hear that");
+						break;
+						
+					case ACLMessage.INFORM:
+						System.out.println( agentName + " received an inform from " + senderName);
+						reply.setPerformative(ACLMessage.REFUSE);
+						reply.setContent("Sorry, cannot buy any energy for now");
+						break;
+						
+					default:
+						reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+						reply.setContent("NOT UNDERSTOOD");
 				}
+				
+				// send back
 				myAgent.send(reply);
+				
 			} else {
 				// wait for message
 				block();
-			}
-		}
-	}
-	
-	
+			}// end if msg
+		}// end action
+	}// end ServicesBehaviour
 	
 	
 	
