@@ -95,7 +95,7 @@ public class RetailerAgent extends Agent {
 	
 	
 	/* --- Jade function --- */
-	
+
 	/**
 	 * setup jade agent
 	 */
