@@ -302,6 +302,17 @@
         },
         {
             "type": "java",
+            "name": "Debug (Launch)-RetailerAgents",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.Boot",
+            "args": "-container -agents RetailerAgent_1:EnergyAgents.RetailerAgent;RetailerAgent_2:EnergyAgents.RetailerAgent;RetailerAgent_3:EnergyAgents.RetailerAgent;",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
             "name": "Debug (Launch)-HomeAgent",
             "request": "launch",
             "cwd": "${workspaceFolder}",

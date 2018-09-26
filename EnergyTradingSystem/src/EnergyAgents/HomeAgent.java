@@ -1,12 +1,15 @@
 package EnergyAgents;
 
 import jade.core.Agent;
+import jade.core.AID;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.*;
 import jade.domain.FIPAException;
+
 
 
 /**
@@ -53,9 +56,11 @@ public class HomeAgent extends Agent
         sd.setName(this.agentName);
         register(sd);
         
+        
 
         //Add behaviours
-        addBehaviour(new ReceiveDemand());
+        //addBehaviour(new ReceiveDemand());
+        addBehaviour(new TestBehaviour());
     }
 
     /**
@@ -97,6 +102,28 @@ public class HomeAgent extends Agent
         }
     }
 
+    AID[] getRetailerAgents(String serviceType)
+    {
+        DFAgentDescription dfd = new DFAgentDescription();
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType(serviceType);
+        dfd.addServices(sd);
+
+        SearchConstraints ALL = new SearchConstraints();
+        ALL.setMaxDepth(new Long(0));//what the hell is it
+
+        try {
+            DFAgentDescription[] result = DFService.search(this, dfd);
+            AID[] agents = new AID[result.length];
+            for( int i =0 ; i < result.length; i++)
+                agents[i] = result[i].getName();
+            return  agents;
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+        return null;        
+    }
+
     /**
      * Receive demand from Appliances
      */
@@ -120,6 +147,25 @@ public class HomeAgent extends Agent
             }
             //Continue listening
             block();
+        }
+    }
+
+    /**
+     * Test Behaviour
+     */
+
+    private class TestBehaviour extends OneShotBehaviour
+    {
+        public void action(){
+            AID[] aids = getRetailerAgents("Retailer");
+            System.out.println("Retailer agents total number:" + aids.length);
+            for(AID a : aids){
+                System.out.println(a.getLocalName());
+                System.out.println("----------------------------------------");
+            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+            msg.setContent("Hello");
+            myAgent.send(msg);
+            }
         }
     }
 }
