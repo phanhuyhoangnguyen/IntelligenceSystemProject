@@ -33,7 +33,7 @@ public class ApplianceAgent extends Agent {
 	private static final String TIME_FORMAT = "HH:mm:ss";
 	private static final int LIVED_DAYS = 30;						// number of days agents have lived in the stimulation -> for data reading
 	private static final int secondsInADay = 86400;					// number of seconds in a day
-	private static int actualLivesSeconds;							// number of seconds agents have lived since created
+	private static int actualLivedSeconds;							// number of seconds agents have lived since created
 	
 	// testing - TODO: change this to relative path later
 	private static final String CSV_FILE_PATH = "D:\\Mark Backup\\Bachelor\\3rd year\\2nd Semester\\COS30018 - Intelligent Systems\\Assignment\\Electricity_P.csv";
@@ -45,7 +45,8 @@ public class ApplianceAgent extends Agent {
 		// for testing - TODO: delete later
 		this.applicantID = "fan";
 		
-		this.actualLivesSeconds = 0;				//TODO: check if this can be changed to startTime and endTime
+		// this is set for skipping the first row in CSV file below
+		this.actualLivedSeconds = 1000;				//TODO: check if this can be changed to startTime and endTime
 		
 		// start time
 		SimpleDateFormat hourFormatter = new SimpleDateFormat(TIME_FORMAT);
@@ -178,20 +179,27 @@ public class ApplianceAgent extends Agent {
 		return this.endTime;
 	}
 	
+	private int setActualLivedSeconds(int actualLivedSeconds) {
+		return this.actualLivedSeconds = actualLivedSeconds;
+	}
+	
+	private int getActualLivedSeconds() {
+		return this.actualLivedSeconds;
+	}
+	
 	// Energy Consumption Stimulation - Agent doesn't actual consume energy, it reads from data file and return
-	private long getActualEnergyUsage(int timeDuration) {				// per hour
+	private long getActualEnergyUsage(int timeDuration) {
+		
 		long totalUsage = 0;
 		File file = new File(CSV_FILE_PATH);
 		if(file.exists()) {
-			// do something
 		    try {
 		    	// Create an object of filereader class 
 		        FileReader filereader = new FileReader(CSV_FILE_PATH); 
 		  
-		        // create csvReader object 
-		        // and skip first Line - header line
+		        // create csvReader object to read the csv file and skip already read Line
 		        CSVReader csvReader = new CSVReaderBuilder(filereader) 
-		                                  .withSkipLines(1)				//TODO: this is changeable 
+		                                  .withSkipLines(getActualLivedSeconds()/1000)			// index of rows to be read
 		                                  .build();
 		        String[] nextRecord;
 		        
@@ -200,16 +208,16 @@ public class ApplianceAgent extends Agent {
 		        
 		        for (int i = 0; i < noOFRowsToRead; i++) {
 		        	nextRecord = csvReader.readNext();
-		            /*for (String cell : nextRecord) { 
-		                System.out.print(cell + "\t");
-		            }*/
-		        	totalUsage += Long.parseLong(nextRecord[9]);		//TODO: this is also changeable
-		            System.out.println(); 
+		        	// Calculate total usage
+		        	totalUsage += Long.parseLong(nextRecord[9]);		// TODO: this is also changeable
 		        }
 		    } catch (Exception e) {
 		    	e.printStackTrace(); 
 		    }
 		}
+		
+		// update the number second have lived
+		setActualLivedSeconds(getActualLivedSeconds() + timeDuration);
 		
 		return totalUsage;
 	}
