@@ -3,41 +3,49 @@ package EnergyAgents;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.AMSService;
 import jade.domain.FIPAAgentManagement.AMSAgentDescription;
 import jade.domain.FIPAAgentManagement.SearchConstraints;
 import jade.lang.acl.ACLMessage;
 
+import java.io.File;
+import java.io.FileReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;  
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+
+import com.opencsv.*;
 
 import database.DbHelper;
 
 public class ApplianceAgent extends Agent {
 	private String applicantID;
-	private double energyDefaultUsage;				// kWh per hour
-	private double energyActualUsage;				// kWh per hour
 	private boolean isOn;							// Appliance Status
 	private String startTime;
 	private String endTime;
-	private static final int UPATE_DURATION = 5000;					// 5s -> this will be changed to be 15 minutes later
+	private static final int UPATE_DURATION = 10000;					// 10s -> this will be changed to be 15 minutes later
 	private static final String TIME_FORMAT = "HH:mm:ss";
+	private static final int LIVED_DAYS = 30;						// number of days agents have lived in the stimulation -> for data reading
+	private static final int secondsInADay = 86400;					// number of seconds in a day
+	private static int actualLivesSeconds;							// number of seconds agents have lived since created
+	
+	// testing - TODO: change this to relative path later
+	private static final String CSV_FILE_PATH = "D:\\Mark Backup\\Bachelor\\3rd year\\2nd Semester\\COS30018 - Intelligent Systems\\Assignment\\Electricity_P.csv";
 	
 	public ApplianceAgent () {	//TODO: change this to read data from constructor 
 		// setApplicantID(applicantID);
 		// setEnergyDefaultUsage(energyUsage);
 		
 		// for testing - TODO: delete later
-		this.energyDefaultUsage = 0.075;
-		this.applicantID = "fan"; 
+		this.applicantID = "fan";
 		
-		// turn on the appliance
-		setApplicantStatus(true);
+		this.actualLivesSeconds = 0;				//TODO: check if this can be changed to startTime and endTime
 		
 		// start time
 		SimpleDateFormat hourFormatter = new SimpleDateFormat(TIME_FORMAT);
@@ -45,27 +53,30 @@ public class ApplianceAgent extends Agent {
 		setStartTime(hourFormatter.format(date));
 	}
 	
-	protected void setup() {	
-		// Create behaviour that receives messages
+	protected void setup() {
+		// TODO: Create behaviour that receives messages
         // CyclicBehaviour msgReceivingBehaviour = new msgReceivingBehaviour();
         // Waiting for received messages
         // addBehaviour(msgReceivingBehaviour);
-        
-        TickerBehaviour sendActualEnergyUsage = new TickerBehaviour(this, UPATE_DURATION) {
+		System.out.println("Appliance Agent is created!");
+		
+        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
     
             protected void onTick() {
-    			SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
-    		    Date date = new Date();
-    		    String endTime = hourFormatter.format(date);
-    		    setEndTime(endTime);
-    		    double energyActualUsage = getActualEnergyUsage(getStartTime(), getEndTime());
-    		    
-    		    // Reset the start time
-    		    setStartTime(endTime);
-    		    
-    		    // Send messages to home agents
+            	
+            	sendActualUsage();
+            	
+            	// predictUsage();		//TODO: update this later
+            }
+            
+            // Energy Consumption Stimulation and Send to Home Agent 
+            // Agents doesn't produce the energy but read from database and send them to Home Agent
+            protected void sendActualUsage() {
+            	String energyConsumed = Long.toString(getActualEnergyUsage(UPATE_DURATION));
+            	
+            	// Send messages to home agents
     		    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-    		    msg.setContent(Double.toString(energyActualUsage));
+    		    msg.setContent(energyConsumed);
     		    msg.addReceiver(new AID("Home", AID.ISLOCALNAME) );
     		    
     		    // Send Message
@@ -76,11 +87,44 @@ public class ApplianceAgent extends Agent {
     		            System.out.println(((AID)receivers.next()).getLocalName());
     		    }
     		    // send message
-    		    send(msg);  
+    		    send(msg);
+            }
+            
+            protected void predictUsage() {
+            	// Read a certain amount of data from CSV file
+				File file = new File(CSV_FILE_PATH);
+				if(file.exists()) {
+					// do something
+				    try {
+				    	// Create an object of filereader class 
+				        FileReader filereader = new FileReader(CSV_FILE_PATH); 
+				  
+				        // create csvReader object 
+				        // and skip first Line - header line
+				        CSVReader csvReader = new CSVReaderBuilder(filereader) 
+				                                  .withSkipLines(1) 
+				                                  .build();
+				        String[] nextRecord;
+				        
+				        // Each row is each second
+				        int noOFRowsToRead = LIVED_DAYS * secondsInADay;
+				        
+				        for (int i = 0; i < noOFRowsToRead; i++) {
+				        	nextRecord = csvReader.readNext();
+				            for (String cell : nextRecord) { 
+				                System.out.print(cell + "\t"); 
+				            }
+				            System.out.println(); 
+				        }
+				    } catch (Exception e) {
+				    	e.printStackTrace(); 
+				    }
+				}
             }
         };
+        
         // Sending message every 5 seconds
-        addBehaviour(sendActualEnergyUsage);
+        addBehaviour(communicateToHome);
     }
 	
 	private class msgReceivingBehaviour extends CyclicBehaviour {
@@ -110,14 +154,6 @@ public class ApplianceAgent extends Agent {
 		return this.applicantID;
 	}
 	
-	protected void setEnergyDefaultUsage(double energyDefaultUsage) {
-		this.energyDefaultUsage = energyDefaultUsage;
-	}
-	
-	public double getEnergyDefaultUsage() {
-		return this.energyDefaultUsage;
-	}
-	
 	protected void setApplicantStatus(boolean isOn) {
 		this.isOn = isOn;
 	}
@@ -142,87 +178,40 @@ public class ApplianceAgent extends Agent {
 		return this.endTime;
 	}
 	
-	public double getDefaultEnergyUsage() {
-		return this.energyDefaultUsage;
-	}
-	
-	private double getActualEnergyUsage(String startTime, String endTime) {				// per hour
-		
-		SimpleDateFormat hourFormatter = new SimpleDateFormat(TIME_FORMAT);
-
-        Date d1 = new Date();
-		try {
-			d1 = hourFormatter.parse(startTime);
-		} catch (ParseException e) {
-			e.printStackTrace();
+	// Energy Consumption Stimulation - Agent doesn't actual consume energy, it reads from data file and return
+	private long getActualEnergyUsage(int timeDuration) {				// per hour
+		long totalUsage = 0;
+		File file = new File(CSV_FILE_PATH);
+		if(file.exists()) {
+			// do something
+		    try {
+		    	// Create an object of filereader class 
+		        FileReader filereader = new FileReader(CSV_FILE_PATH); 
+		  
+		        // create csvReader object 
+		        // and skip first Line - header line
+		        CSVReader csvReader = new CSVReaderBuilder(filereader) 
+		                                  .withSkipLines(1)				//TODO: this is changeable 
+		                                  .build();
+		        String[] nextRecord;
+		        
+		        // Each row is each second: second = timeDuration / 1000
+		        int noOFRowsToRead = timeDuration / 1000;
+		        
+		        for (int i = 0; i < noOFRowsToRead; i++) {
+		        	nextRecord = csvReader.readNext();
+		            /*for (String cell : nextRecord) { 
+		                System.out.print(cell + "\t");
+		            }*/
+		        	totalUsage += Long.parseLong(nextRecord[9]);		//TODO: this is also changeable
+		            System.out.println(); 
+		        }
+		    } catch (Exception e) {
+		    	e.printStackTrace(); 
+		    }
 		}
 		
-        Date d2 = new Date();
-		try {
-			d2 = hourFormatter.parse(endTime);
-		} catch (ParseException e) {
-			e.printStackTrace();
-		}
-		
-        long timeDiff = d2.getTime() - d1.getTime();
-        
-		
-		// calculate time different in minutes
-
-		long minutesDiff = timeDiff / (60 * 1000) % 60;
-		
-		// this is for testing - TODO: delete later
-		long secondsDiff = timeDiff / 1000;
-		
-		System.out.println("Start Time: " + startTime + " endTime: " + endTime + " secondsDiff: " + secondsDiff);
-		
-		return this.energyActualUsage = secondsDiff * getDefaultEnergyUsage();	//TODO: change this to minutesDiff later
-	}
-	
-	private String updateActualUsageToDatabase() {			// deprecated
-		String result = "";
-		// Database object
-		DbHelper db = new DbHelper();
-		
-		// Connect to database
-		if ( db.connect()) {
-			System.out.println("Connected successfully in " + db.getDbLocation());
-		} else {
-			System.out.println("Fail! cannot connect to database.");
-			System.out.println(db.getError());
-			System.exit(1);
-		}
-
-		String tableName = "EnergyConsumption";
-		
-		SimpleDateFormat dateFormatter = new SimpleDateFormat("dd/MM/yyyy");
-		
-	    Date date = new Date();
-	    SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
-	    this.endTime = hourFormatter.format(date);
-	    
-	    String currentDate = dateFormatter.format(date);
-	    double energyActualUsage = getActualEnergyUsage(this.startTime, this.endTime);
-	    
-		// Insert to table
-		Map<String,Object> data = new LinkedHashMap<>();
-		
-		data.put("date", currentDate);
-		data.put("startTime", this.startTime);
-		data.put("endTime", this.endTime);
-		data.put("energyUsage", energyActualUsage);
-		data.put("applicantID", this.applicantID);
-		
-		int insertedID = db.insert(tableName, data);
-		if (insertedID != 0) {
-			System.out.println("Insert id is " + insertedID);
-			result = "Insert Success!";
-		}
-		
-		// close
-		db.close();
-		
-		return result;
+		return totalUsage;
 	}
 	
 	public String estimateElectricity() {
