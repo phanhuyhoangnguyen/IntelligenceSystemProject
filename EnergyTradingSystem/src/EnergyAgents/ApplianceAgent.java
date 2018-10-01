@@ -1,40 +1,112 @@
 package EnergyAgents;
 
+import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.TickerBehaviour;
+import jade.domain.AMSService;
+import jade.domain.FIPAAgentManagement.AMSAgentDescription;
+import jade.domain.FIPAAgentManagement.SearchConstraints;
+import jade.lang.acl.ACLMessage;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;  
 import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import database.DbHelper;
 
 public class ApplianceAgent extends Agent {
-	private int applicantID;
+	private String applicantID;
 	private double energyDefaultUsage;				// kWh per hour
 	private double energyActualUsage;				// kWh per hour
 	private boolean isOn;							// Appliance Status
 	private String startTime;
 	private String endTime;
+	private static final int UPATE_DURATION = 5000;					// 5s -> this will be changed to be 15 minutes later
+	private static final String TIME_FORMAT = "HH:mm:ss";
 	
-	protected void setup(int applicantID, double energyUsage) {	// these data is taken from database and passed in from parameters
-		setApplicantID(applicantID);
-		setEnergyDefaultUsage(energyUsage);
+	public ApplianceAgent () {	//TODO: change this to read data from constructor 
+		// setApplicantID(applicantID);
+		// setEnergyDefaultUsage(energyUsage);
+		
+		// for testing - TODO: delete later
+		this.energyDefaultUsage = 0.075;
+		this.applicantID = "fan"; 
 		
 		// turn on the appliance
 		setApplicantStatus(true);
+		
 		// start time
-		SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
+		SimpleDateFormat hourFormatter = new SimpleDateFormat(TIME_FORMAT);
 	    Date date = new Date();
 		setStartTime(hourFormatter.format(date));
 	}
 	
-	protected void setApplicantID(int applicantID) {
+	protected void setup() {	
+		// Create behaviour that receives messages
+        // CyclicBehaviour msgReceivingBehaviour = new msgReceivingBehaviour();
+        // Waiting for received messages
+        // addBehaviour(msgReceivingBehaviour);
+        
+        TickerBehaviour sendActualEnergyUsage = new TickerBehaviour(this, UPATE_DURATION) {
+    
+            protected void onTick() {
+    			SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
+    		    Date date = new Date();
+    		    String endTime = hourFormatter.format(date);
+    		    setEndTime(endTime);
+    		    double energyActualUsage = getActualEnergyUsage(getStartTime(), getEndTime());
+    		    
+    		    // Reset the start time
+    		    setStartTime(endTime);
+    		    
+    		    // Send messages to home agents
+    		    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+    		    msg.setContent(Double.toString(energyActualUsage));
+    		    msg.addReceiver(new AID("Home", AID.ISLOCALNAME) );
+    		    
+    		    // Send Message
+    		    System.out.println(getLocalName() + ": Sending message " + msg.getContent() + " to ");
+    		    
+    		    Iterator receivers = msg.getAllIntendedReceiver();
+    		    while(receivers.hasNext()) {
+    		            System.out.println(((AID)receivers.next()).getLocalName());
+    		    }
+    		    // send message
+    		    send(msg);  
+            }
+        };
+        // Sending message every 5 seconds
+        addBehaviour(sendActualEnergyUsage);
+    }
+	
+	private class msgReceivingBehaviour extends CyclicBehaviour {
+
+		@Override
+		public void action() {
+			System.out.println(getLocalName() + ": Waiting for message");
+
+            // Retrieve message from message queue if there is
+            ACLMessage msg= receive();
+            if (msg!=null) {
+            	// Print out message content
+            	System.out.println(getLocalName()+ ": Received response " + msg.getContent() + " from " + msg.getSender().getLocalName());
+           }
+        
+            // Block the behaviour from terminating and keep listening to the message
+            block();
+		}
+		
+	}
+	
+	protected void setApplicantID(String applicantID) {
 		this.applicantID = applicantID;
 	}
 	
-	public int getApplicantID() {
+	public String getApplicantID() {
 		return this.applicantID;
 	}
 	
@@ -75,11 +147,9 @@ public class ApplianceAgent extends Agent {
 	}
 	
 	private double getActualEnergyUsage(String startTime, String endTime) {				// per hour
-		// startTime and endTime can be am/pm format
-		// String startTime = "9:00 AM";
-		// String endTime = "10:00 AM";
 		
-		SimpleDateFormat hourFormatter = new SimpleDateFormat("h:mm a");			// always convert them to AM/PM to handle
+		SimpleDateFormat hourFormatter = new SimpleDateFormat(TIME_FORMAT);
+
         Date d1 = new Date();
 		try {
 			d1 = hourFormatter.parse(startTime);
@@ -96,11 +166,17 @@ public class ApplianceAgent extends Agent {
 		
         long timeDiff = d2.getTime() - d1.getTime();
         
-		// calculate time different in minutes
-        long minutesDiff = timeDiff / (60 * 1000) % 60;
-
 		
-		return this.energyActualUsage = minutesDiff * getDefaultEnergyUsage();
+		// calculate time different in minutes
+
+		long minutesDiff = timeDiff / (60 * 1000) % 60;
+		
+		// this is for testing - TODO: delete later
+		long secondsDiff = timeDiff / 1000;
+		
+		System.out.println("Start Time: " + startTime + " endTime: " + endTime + " secondsDiff: " + secondsDiff);
+		
+		return this.energyActualUsage = secondsDiff * getDefaultEnergyUsage();	//TODO: change this to minutesDiff later
 	}
 	
 	private String updateActualUsageToDatabase() {			// deprecated
@@ -150,19 +226,6 @@ public class ApplianceAgent extends Agent {
 	}
 	
 	public String estimateElectricity() {
-		return "";
-	}
-	
-	// This is invoked by A "Behaviour"
-	public String sendActualEnergyUsageToHomeAgent() {
-		SimpleDateFormat hourFormatter = new SimpleDateFormat("HH:mm:ss");
-	    Date date = new Date();
-	    this.endTime = hourFormatter.format(date);
-	    
-	    double energyActualUsage = getActualEnergyUsage(this.startTime, this.endTime);
-	    
-	    //TODO: send message to HomeAgent
-	    
 		return "";
 	}
 }
