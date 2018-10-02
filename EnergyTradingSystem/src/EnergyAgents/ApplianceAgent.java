@@ -15,6 +15,7 @@ import java.io.FileReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;  
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,8 +25,14 @@ import com.opencsv.*;
 
 import database.DbHelper;
 
+/**
+ * ApplicantEnum 
+ * @author Phan
+ * 
+ * @Description The applicant agent compute its energy usage and send it to the HomeAgent periodically
+ */
 public class ApplianceAgent extends Agent {
-	private String applicantID;
+	private String applicantName;
 	private boolean isOn;							// Appliance Status
 	private String startTime;
 	private String endTime;
@@ -34,16 +41,12 @@ public class ApplianceAgent extends Agent {
 	private static final int LIVED_DAYS = 30;						// number of days agents have lived in the stimulation -> for data reading
 	private static final int secondsInADay = 86400;					// number of seconds in a day
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
+	private Map <String, Integer> applicantDict;
 	
 	// testing - TODO: change this to relative path later
 	private static final String CSV_FILE_PATH = "D:\\Mark Backup\\Bachelor\\3rd year\\2nd Semester\\COS30018 - Intelligent Systems\\Assignment\\Electricity_P.csv";
 	
 	public ApplianceAgent () {	//TODO: change this to read data from constructor 
-		// setApplicantID(applicantID);
-		// setEnergyDefaultUsage(energyUsage);
-		
-		// for testing - TODO: delete later
-		this.applicantID = "fan";
 		
 		// this is set for skipping the first row in CSV file below
 		this.actualLivedSeconds = 1000;				//TODO: check if this can be changed to startTime and endTime
@@ -52,14 +55,22 @@ public class ApplianceAgent extends Agent {
 		SimpleDateFormat hourFormatter = new SimpleDateFormat(TIME_FORMAT);
 	    Date date = new Date();
 		setStartTime(hourFormatter.format(date));
+		
+		intializeAppliantDictionary();
 	}
-	
+
 	protected void setup() {
+		
+		
+		Object[] args = getArguments();
+        this.applicantName = args[0].toString(); 	// this returns the String "1"
+        
 		// TODO: Create behaviour that receives messages
         // CyclicBehaviour msgReceivingBehaviour = new msgReceivingBehaviour();
         // Waiting for received messages
         // addBehaviour(msgReceivingBehaviour);
-		System.out.println("Appliance Agent is created!");
+        
+		System.out.println("Appliance Agent" + this.applicantName + " is created!");
 		
         TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
     
@@ -147,12 +158,12 @@ public class ApplianceAgent extends Agent {
 		
 	}
 	
-	protected void setApplicantID(String applicantID) {
-		this.applicantID = applicantID;
+	protected void setApplicantID(String applicantName) {
+		this.applicantName = applicantName;
 	}
 	
-	public String getApplicantID() {
-		return this.applicantID;
+	public String getApplicantName() {
+		return this.applicantName;
 	}
 	
 	protected void setApplicantStatus(boolean isOn) {
@@ -189,7 +200,7 @@ public class ApplianceAgent extends Agent {
 	
 	// Energy Consumption Stimulation - Agent doesn't actual consume energy, it reads from data file and return
 	private long getActualEnergyUsage(int timeDuration) {
-		
+		int dataIndex= applicantDict.get(this.applicantName.toUpperCase());
 		long totalUsage = 0;
 		File file = new File(CSV_FILE_PATH);
 		if(file.exists()) {
@@ -209,7 +220,7 @@ public class ApplianceAgent extends Agent {
 		        for (int i = 0; i < noOFRowsToRead; i++) {
 		        	nextRecord = csvReader.readNext();
 		        	// Calculate total usage
-		        	totalUsage += Long.parseLong(nextRecord[9]);		// TODO: this is also changeable
+		        	totalUsage += Long.parseLong(nextRecord[dataIndex]);
 		        }
 		    } catch (Exception e) {
 		    	e.printStackTrace(); 
@@ -225,4 +236,32 @@ public class ApplianceAgent extends Agent {
 	public String estimateElectricity() {
 		return "";
 	}
+	
+	private void intializeAppliantDictionary() {
+		applicantDict = new HashMap<String, Integer>();
+		applicantDict.put("WHE", 1);
+		applicantDict.put("RSE", 2);
+		applicantDict.put("GRE", 3);
+		applicantDict.put("MHE", 4);
+		applicantDict.put("B1E", 5);
+		applicantDict.put("BME", 6);
+		applicantDict.put("CWE", 7);
+		applicantDict.put("DWE", 8);
+		applicantDict.put("EQE", 9);
+		applicantDict.put("FRE", 10);
+		applicantDict.put("HPE", 11);
+		applicantDict.put("OFE", 12);
+		applicantDict.put("UTE", 13);
+		applicantDict.put("WOE", 14);
+		applicantDict.put("B2E", 15);
+		applicantDict.put("CDE", 16);
+		applicantDict.put("DNE", 17);
+		applicantDict.put("EBE", 18);
+		applicantDict.put("FGE", 19);
+		applicantDict.put("HTE", 20);
+		applicantDict.put("OUE", 21);
+		applicantDict.put("TVE", 22);
+		applicantDict.put("UNE", 23);
+	}
 }
+		
