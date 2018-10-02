@@ -12,6 +12,7 @@ import jade.lang.acl.ACLMessage;
 
 import java.io.File;
 import java.io.FileReader;
+import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;  
 import java.util.Date;
@@ -33,23 +34,23 @@ import database.DbHelper;
  */
 public class ApplianceAgent extends Agent {
 	private String applicantName;
-	private boolean isOn;							// Appliance Status
+	private boolean isOn;											// Appliance Status
 	private String startTime;
 	private String endTime;
-	private static final int UPATE_DURATION = 10000;					// 10s -> this will be changed to be 15 minutes later
+	private static final int UPATE_DURATION = 10000;				// 10s -> specify the frequency of message sent to Home Agent. 
+																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
 	private static final String TIME_FORMAT = "HH:mm:ss";
 	private static final int LIVED_DAYS = 30;						// number of days agents have lived in the stimulation -> for data reading
 	private static final int secondsInADay = 86400;					// number of seconds in a day
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
-	private Map <String, Integer> applicantDict;
+	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
+	private static final int USAGE_DURATION = 1800000;				// 30 mins -> specify the total usage of agent in a period of time, 30 mins. 
+																		
 	
-	// testing - TODO: change this to relative path later
-	private static final String CSV_FILE_PATH = "D:\\Mark Backup\\Bachelor\\3rd year\\2nd Semester\\COS30018 - Intelligent Systems\\Assignment\\Electricity_P.csv";
-	
-	public ApplianceAgent () {	//TODO: change this to read data from constructor 
+	public ApplianceAgent () {
 		
 		// this is set for skipping the first row in CSV file below
-		this.actualLivedSeconds = 1000;				//TODO: check if this can be changed to startTime and endTime
+		this.actualLivedSeconds = 1000;				//TODO: check if this should be changed to startTime and endTime
 		
 		// start time
 		SimpleDateFormat hourFormatter = new SimpleDateFormat(TIME_FORMAT);
@@ -84,7 +85,10 @@ public class ApplianceAgent extends Agent {
             // Energy Consumption Stimulation and Send to Home Agent 
             // Agents doesn't produce the energy but read from database and send them to Home Agent
             protected void sendActualUsage() {
-            	String energyConsumed = Long.toString(getActualEnergyUsage(UPATE_DURATION));
+            	String energyConsumed = Double.toString(getActualEnergyUsage(USAGE_DURATION));
+            	
+            	// TODO: implement service
+            	// TODO: search for homeagent
             	
             	// Send messages to home agents
     		    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
@@ -103,15 +107,16 @@ public class ApplianceAgent extends Agent {
             }
             
             protected void predictUsage() {
+            	String pathToCSV = "./src/database/Electricity_P_DS.csv";;
             	// Read a certain amount of data from CSV file
-				File file = new File(CSV_FILE_PATH);
+				File file = new File(pathToCSV);
 				if(file.exists()) {
 					// do something
 				    try {
 				    	// Create an object of filereader class 
-				        FileReader filereader = new FileReader(CSV_FILE_PATH); 
+				        FileReader filereader = new FileReader(pathToCSV); 
 				  
-				        // create csvReader object 
+				        // create csvReader object
 				        // and skip first Line - header line
 				        CSVReader csvReader = new CSVReaderBuilder(filereader) 
 				                                  .withSkipLines(1) 
@@ -199,14 +204,17 @@ public class ApplianceAgent extends Agent {
 	}
 	
 	// Energy Consumption Stimulation - Agent doesn't actual consume energy, it reads from data file and return
-	private long getActualEnergyUsage(int timeDuration) {
+	private Double getActualEnergyUsage(int timeDuration) {
 		int dataIndex= applicantDict.get(this.applicantName.toUpperCase());
-		long totalUsage = 0;
-		File file = new File(CSV_FILE_PATH);
+		Double totalUsage = 0.0;
+		String pathToCSV = "./src/database/Electricity_P_DS.csv";
+    	File directory = new File(pathToCSV);
+ 	   
+		File file = new File(pathToCSV);
 		if(file.exists()) {
 		    try {
 		    	// Create an object of filereader class 
-		        FileReader filereader = new FileReader(CSV_FILE_PATH); 
+		        FileReader filereader = new FileReader(pathToCSV); 
 		  
 		        // create csvReader object to read the csv file and skip already read Line
 		        CSVReader csvReader = new CSVReaderBuilder(filereader) 
@@ -214,16 +222,19 @@ public class ApplianceAgent extends Agent {
 		                                  .build();
 		        String[] nextRecord;
 		        
-		        // Each row is each second: second = timeDuration / 1000
-		        int noOFRowsToRead = timeDuration / 1000;
+		        // Each row is for 30 min -> if timeDuration is 30 mins then 1 rows will be read
+		        int noOFRowsToRead = timeDuration / 1800000;
 		        
 		        for (int i = 0; i < noOFRowsToRead; i++) {
+		        	// Each line is read as 1 array
 		        	nextRecord = csvReader.readNext();
 		        	// Calculate total usage
-		        	totalUsage += Long.parseLong(nextRecord[dataIndex]);
+		        	totalUsage += Double.parseDouble(nextRecord[dataIndex]);
+		        	System.out.println(nextRecord[dataIndex]);
+		        	
 		        }
 		    } catch (Exception e) {
-		    	e.printStackTrace(); 
+		    	e.printStackTrace();
 		    }
 		}
 		
@@ -239,29 +250,29 @@ public class ApplianceAgent extends Agent {
 	
 	private void intializeAppliantDictionary() {
 		applicantDict = new HashMap<String, Integer>();
-		applicantDict.put("WHE", 1);
-		applicantDict.put("RSE", 2);
-		applicantDict.put("GRE", 3);
-		applicantDict.put("MHE", 4);
-		applicantDict.put("B1E", 5);
-		applicantDict.put("BME", 6);
-		applicantDict.put("CWE", 7);
-		applicantDict.put("DWE", 8);
-		applicantDict.put("EQE", 9);
-		applicantDict.put("FRE", 10);
-		applicantDict.put("HPE", 11);
-		applicantDict.put("OFE", 12);
-		applicantDict.put("UTE", 13);
-		applicantDict.put("WOE", 14);
-		applicantDict.put("B2E", 15);
-		applicantDict.put("CDE", 16);
-		applicantDict.put("DNE", 17);
-		applicantDict.put("EBE", 18);
-		applicantDict.put("FGE", 19);
-		applicantDict.put("HTE", 20);
-		applicantDict.put("OUE", 21);
-		applicantDict.put("TVE", 22);
-		applicantDict.put("UNE", 23);
+		applicantDict.put("WHE", 2);
+		applicantDict.put("RSE", 3);
+		applicantDict.put("GRE", 4);
+		applicantDict.put("MHE", 5);
+		applicantDict.put("B1E", 6);
+		applicantDict.put("BME", 7);
+		applicantDict.put("CWE", 8);
+		applicantDict.put("DWE", 9);
+		applicantDict.put("EQE", 10);
+		applicantDict.put("FRE", 11);
+		applicantDict.put("HPE", 12);
+		applicantDict.put("OFE", 13);
+		applicantDict.put("UTE", 14);
+		applicantDict.put("WOE", 15);
+		applicantDict.put("B2E", 16);
+		applicantDict.put("CDE", 17);
+		applicantDict.put("DNE", 18);
+		applicantDict.put("EBE", 19);
+		applicantDict.put("FGE", 20);
+		applicantDict.put("HTE", 21);
+		applicantDict.put("OUE", 22);
+		applicantDict.put("TVE", 23);
+		applicantDict.put("UNE", 24);
 	}
 }
 		
