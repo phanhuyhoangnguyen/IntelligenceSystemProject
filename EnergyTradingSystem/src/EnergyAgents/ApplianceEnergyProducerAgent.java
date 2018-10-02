@@ -15,7 +15,6 @@ public class ApplianceEnergyProducerAgent extends ApplianceAgent implements Ener
 	
 	protected void setup(String applicantID, double energyDefaultUsage, double energyDefaultProduction) {	// these data is taken from database and passed in from parameters
 		setApplicantID(applicantID);
-		setEnergyDefaultUsage(energyDefaultUsage);
 		this.energyDefaultProduction = energyDefaultProduction;
 		
 		// turn on the appliance
