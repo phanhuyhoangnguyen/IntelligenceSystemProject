@@ -38,28 +38,23 @@ import database.DbHelper;
  */
 public class ApplianceAgent extends Agent {
 	private String applicantName;
-	private boolean isOn;											// Appliance Status
-	private String startTime;
-	private String endTime;
+	
+	// For Message Communication to HomeAgent
 	private static final int UPATE_DURATION = 10000;				// 10s -> specify the frequency of message sent to Home Agent. 
 																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
-	private static final String TIME_FORMAT = "HH:mm:ss";
-	private static final int LIVED_DAYS = 30;						// number of days agents have lived in the stimulation -> for data reading
-	private static final int secondsInADay = 86400;					// number of seconds in a day
+	// For energyUsage Stimulation
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
-	private static final int USAGE_DURATION = 1800000;				// 30 mins -> specify the total usage of agent in a period of time, 30 mins. 
-																		
+	private static final int USAGE_DURATION = 1800000;				// 30 mins -> specify the total usage of agent in a period of time, 30 mins.
+	
+	// For prediction
+	private static final int LIVED_DAYS = 30;						// number of days agents have lived in the stimulation
+	private static final int secondsInADay = 86400;					// number of seconds in a day
 	
 	public ApplianceAgent () {
 		
 		// this is set for skipping the first row in CSV file below
 		this.actualLivedSeconds = 1000;				//TODO: check if this should be changed to startTime and endTime
-		
-		// start time
-		SimpleDateFormat hourFormatter = new SimpleDateFormat(TIME_FORMAT);
-	    Date date = new Date();
-		setStartTime(hourFormatter.format(date));
 		
 		intializeAppliantDictionary();
 	}
@@ -75,14 +70,14 @@ public class ApplianceAgent extends Agent {
         sd.setName(getApplicantName());
         
         // calling Agent's method to start the registration process
-        register( sd );
+        register(sd);
         
 		// TODO: Create behaviour that receives messages
         // CyclicBehaviour msgReceivingBehaviour = new msgReceivingBehaviour();
         // Waiting for received messages
         // addBehaviour(msgReceivingBehaviour);
         
-		System.out.println("Appliance Agent" + this.applicantName + " is created!");
+		System.out.println("Appliance Agent" + getLocalName() + " is created!");
 		
         TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
     
@@ -97,27 +92,34 @@ public class ApplianceAgent extends Agent {
             // Agents doesn't produce the energy but read from database and send them to Home Agent
             protected void sendActualUsage() {
             	String energyConsumed = Double.toString(getActualEnergyUsage(USAGE_DURATION));
-            	
-            	// TODO: implement service
-            	// TODO: search for homeagent
-            	
-            	// Send messages to home agents
-    		    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-    		    msg.setContent(energyConsumed);
-    		    msg.addReceiver(new AID("Home", AID.ISLOCALNAME) );
-    		    
-    		    // Send Message
-    		    System.out.println(getLocalName() + ": Sending message " + msg.getContent() + " to ");
-    		    
-    		    Iterator receivers = msg.getAllIntendedReceiver();
-    		    while(receivers.hasNext()) {
-    		            System.out.println(((AID)receivers.next()).getLocalName());
-    		    }
-    		    // send message
-    		    send(msg);
+            	String HomeAgentService = "Home";
+            	// Search for HomeAgent via its service
+            	DFAgentDescription[] homeAgent = getService(HomeAgentService);
+                if (homeAgent.length > 0) {
+                	AID homeAgentAID = homeAgent[0].getName();
+                	
+                	// Send messages to home agents
+        		    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+        		    msg.setContent(energyConsumed);
+        		    msg.addReceiver(homeAgentAID);
+        		    
+        		    // Send Message
+        		    System.out.println(getLocalName() + ": Sending message " + msg.getContent() + " to ");
+        		    
+        		    Iterator receivers = msg.getAllIntendedReceiver();
+        		    while(receivers.hasNext()) {
+        		            System.out.println(((AID)receivers.next()).getLocalName());
+        		    }
+        		    // send message
+        		    send(msg);
+                }
+                else {
+                	System.out.println("Home Service is not found!");
+                }
+                    
             }
-            
-            protected void predictUsage() {
+
+			protected void predictUsage() {
             	String pathToCSV = "./src/database/Electricity_P_DS.csv";;
             	// Read a certain amount of data from CSV file
 				File file = new File(pathToCSV);
@@ -157,20 +159,48 @@ public class ApplianceAgent extends Agent {
 	
 	private void register(ServiceDescription sd) {
 		DFAgentDescription dfd = new DFAgentDescription();
-	    dfd.setName(getAID());
+        dfd.setName(getAID());
 	    dfd.addServices(sd); // An agent can register one or more services
 	    
 	    try {
-	        
-            DFService.register(this, dfd );  
-	    }
+            // Search for the old DFD and deregister it
+            DFAgentDescription list[] = DFService.search( this, dfd );
+            if ( list.length>0 ) 
+            	DFService.deregister(this);
+            
+            // Add this Service Description to DFAgentDescription
+            dfd.addServices(sd);
+
+            // Register Agent’s Service with DF
+            DFService.register(this, dfd);
+        }
+
 	    catch (FIPAException fe) { fe.printStackTrace(); } 
+	}
+	
+    private DFAgentDescription[] getService(String service) {
+		DFAgentDescription dfd = new DFAgentDescription();
+		
+    	// Create service template for search
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType(service);
+
+        // Add Service Template to DFAgentDescription 
+        dfd.addServices(sd);
+
+        // Search Agent with the target services using DF
+        try {
+                DFAgentDescription[] result = DFService.search(this, dfd);
+                return result;
+        }
+        catch (Exception fe) {}
+        return null;
 	}
 	
 	 // Method to de register the service (on take down)
     protected void takeDown() {
-    	try { DFService.deregister(this); }
-    	catch (Exception e) {}
+    	/* try { DFService.deregister(this); }
+    	catch (Exception e) {} */
     }
 
 
@@ -199,30 +229,6 @@ public class ApplianceAgent extends Agent {
 	
 	public String getApplicantName() {
 		return this.applicantName;
-	}
-	
-	protected void setApplicantStatus(boolean isOn) {
-		this.isOn = isOn;
-	}
-	
-	public boolean getApplicantStatus() {
-		return this.isOn;
-	}
-	
-	protected void setStartTime(String startTime) {
-		this.startTime = startTime;
-	}
-	
-	public String getStartTime() {
-		return this.startTime;
-	}
-
-	protected void setEndTime(String endTime) {
-		this.endTime = endTime;
-	}
-	
-	public String getEndTime() {
-		return this.endTime;
 	}
 	
 	private int setActualLivedSeconds(int actualLivedSeconds) {
