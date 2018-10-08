@@ -1,22 +1,11 @@
 package EnergyAgentGUI.views;
 
-import java.awt.BorderLayout;
-import java.awt.EventQueue;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-
-import javax.swing.GroupLayout;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextArea;
-import javax.swing.JTextField;
-import javax.swing.GroupLayout.Alignment;
-import javax.swing.LayoutStyle.ComponentPlacement;
-import javax.swing.border.EmptyBorder;
-
+import java.awt.event.*;
+import java.awt.*;
+import javax.swing.*;
+import javax.swing.GroupLayout.*;
+import javax.swing.LayoutStyle.*;
+import javax.swing.border.*;
 
 
 import java.awt.Font;
