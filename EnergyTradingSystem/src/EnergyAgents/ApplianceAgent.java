@@ -6,8 +6,12 @@ import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.AMSService;
+import jade.domain.DFService;
+import jade.domain.FIPAException;
 import jade.domain.FIPAAgentManagement.AMSAgentDescription;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.SearchConstraints;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 
 import java.io.File;
@@ -62,9 +66,16 @@ public class ApplianceAgent extends Agent {
 
 	protected void setup() {
 		
-		
-		Object[] args = getArguments();
-        this.applicantName = args[0].toString(); 	// this returns the String "1"
+		Object[] args = getArguments();				// Arguments should be in format: AgentName:EnergyAgents.AppianceAgent("Appliance","ApplianceName"); 
+        this.applicantName = args[1].toString();	
+        
+        // Create Service Description to be registered
+        ServiceDescription sd  = new ServiceDescription();
+        sd.setType(args[0].toString());
+        sd.setName(getApplicantName());
+        
+        // calling Agent's method to start the registration process
+        register( sd );
         
 		// TODO: Create behaviour that receives messages
         // CyclicBehaviour msgReceivingBehaviour = new msgReceivingBehaviour();
@@ -144,6 +155,25 @@ public class ApplianceAgent extends Agent {
         addBehaviour(communicateToHome);
     }
 	
+	private void register(ServiceDescription sd) {
+		DFAgentDescription dfd = new DFAgentDescription();
+	    dfd.setName(getAID());
+	    dfd.addServices(sd); // An agent can register one or more services
+	    
+	    try {
+	        
+            DFService.register(this, dfd );  
+	    }
+	    catch (FIPAException fe) { fe.printStackTrace(); } 
+	}
+	
+	 // Method to de register the service (on take down)
+    protected void takeDown() {
+    	try { DFService.deregister(this); }
+    	catch (Exception e) {}
+    }
+
+
 	private class msgReceivingBehaviour extends CyclicBehaviour {
 
 		@Override
