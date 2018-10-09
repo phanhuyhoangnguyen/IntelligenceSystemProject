@@ -1,1 +1,1 @@
-http://DESKTOP-TCT2GOV.lan:7778/acc
+http://10.1.14.255:7778/acc
