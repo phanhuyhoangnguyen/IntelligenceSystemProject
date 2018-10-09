@@ -1,26 +1,15 @@
 package EnergyAgentGUI.views;
 
-import java.awt.BorderLayout;
-import java.awt.EventQueue;
-
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
-import javax.swing.GroupLayout;
-import javax.swing.GroupLayout.Alignment;
-import javax.swing.ImageIcon;
-import javax.swing.JTextPane;
-import javax.swing.LayoutStyle.ComponentPlacement;
-import javax.swing.JLabel;
-import java.awt.Image;
+import java.awt.event.*;
+import java.awt.*;
+import javax.swing.*;
+import javax.swing.GroupLayout.*;
+import javax.swing.LayoutStyle.*;
+import javax.swing.border.*;
 
 public class MainGUI extends JFrame {
 
 	private JPanel contentPane;
-	GroupLayout gl_contentPane;
-	private JLabel mAppliant;
-	private JLabel mHome; 
-	private JLabel mRetailers;
 	/**
 	 * Launch the application.
 	 */
@@ -42,62 +31,123 @@ public class MainGUI extends JFrame {
 	 */
 	public MainGUI() {
 		setTitle("Energy System");
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 575, 387);
-		
-		contentPane = new JPanel();
-		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		setContentPane(contentPane);
+		initComponent();
 	}
+	
+	/*
+	 * This event called for Appliant 
+	 */
+	public void setMouseListenerAppliant(JLabel jlabel)
+	{
+		jlabel.addMouseListener(new MouseAdapter()  
+		{  
+		    public void mouseClicked(MouseEvent e)  
+		    {  
+		    	AppliantsGUI appliantGUI = new AppliantsGUI();
+		    	appliantGUI.main(null);
+		    }  
+		}); 
+	}
+	/*
+	 * This event called for Home 
+	 */
+	public void setMouseListenerHome(JLabel jlabel)
+	{
+		jlabel.addMouseListener(new MouseAdapter()  
+		{  
+		    public void mouseClicked(MouseEvent e)  
+		    {  
+		    	HomeGUI homeGUI = new HomeGUI();
+		    	homeGUI.main(null);
 
-	public void initializeComponent()
-	{
-		setupContent();
-		matchingUI();
+		    }  
+		}); 
 	}
-	
-	public void setupContent()
+	/*
+	 * This event called for Retailer 
+	 */
+	public void setMouseListenerRetailer(JLabel jlabel)
 	{
-		setTitle("Energy System");
+		jlabel.addMouseListener(new MouseAdapter()  
+		{  
+		    public void mouseClicked(MouseEvent e)  
+		    {  
+		    	RetailersGUI retailersGUI = new RetailersGUI();
+		    	retailersGUI.main(null);
+
+		    }  
+		}); 
+	}
+	public void initComponent()
+	{
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 575, 387);
-		
+		setBounds(100, 100, 520, 397);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
-			
-		mAppliant = new JLabel("");
-		ImageIcon appliantImage = new ImageIcon(this.getClass().getResource("resources/Tools-icon.png").getFile());
-		mAppliant.setIcon(appliantImage);
-		mHome = new JLabel("");
 		
-		mRetailers = new JLabel("");
+		JLabel mAppliant = new JLabel("");
+		ImageIcon mAppliantIcon = new ImageIcon("resources/Tools-icon.png");
+		mAppliant.setIcon(new ImageIcon("C:\\Users\\TuanAnh\\eclipse-workspace\\WindowBuilderAgentsGUI\\src\\windowBuilder\\resources\\Tools-icon.png"));
+		setMouseListenerAppliant(mAppliant);
 		
-	}
-	
-	public void matchingUI()
-	{
-		gl_contentPane = new GroupLayout(contentPane);
+		JLabel mHome = new JLabel("");
+		mHome.setIcon(new ImageIcon("C:\\Users\\TuanAnh\\eclipse-workspace\\WindowBuilderAgentsGUI\\src\\windowBuilder\\resources\\Home-icon.png"));
+		setMouseListenerHome(mHome);
+		
+		JLabel mRetailers = new JLabel("");
+		mRetailers.setIcon(new ImageIcon("C:\\Users\\TuanAnh\\eclipse-workspace\\WindowBuilderAgentsGUI\\src\\windowBuilder\\resources\\dollar-icon.png"));
+		setMouseListenerRetailer(mRetailers);
+		
+		
+		JLabel mAppliantText = new JLabel("Appliant");
+		mAppliantText.setFont(new Font("Tahoma", Font.BOLD, 19));
+		
+		JLabel mHomeText = new JLabel("Home");
+		mHomeText.setFont(new Font("Tahoma", Font.BOLD, 19));
+		
+		JLabel mRetailerText = new JLabel("Retailer");
+		mRetailerText.setFont(new Font("Tahoma", Font.BOLD, 19));
+		
+		
+		
+		GroupLayout gl_contentPane = new GroupLayout(contentPane);
 		gl_contentPane.setHorizontalGroup(
 			gl_contentPane.createParallelGroup(Alignment.LEADING)
 				.addGroup(gl_contentPane.createSequentialGroup()
-					.addGap(43)
-					.addComponent(mAppliant, GroupLayout.PREFERRED_SIZE, 100, GroupLayout.PREFERRED_SIZE)
-					.addGap(78)
-					.addComponent(mHome, GroupLayout.PREFERRED_SIZE, 100, GroupLayout.PREFERRED_SIZE)
-					.addPreferredGap(ComponentPlacement.RELATED, 74, Short.MAX_VALUE)
-					.addComponent(mRetailers, GroupLayout.PREFERRED_SIZE, 100, GroupLayout.PREFERRED_SIZE)
-					.addGap(52))
+					.addGap(22)
+					.addGroup(gl_contentPane.createParallelGroup(Alignment.LEADING)
+						.addGroup(gl_contentPane.createSequentialGroup()
+							.addComponent(mAppliant, GroupLayout.PREFERRED_SIZE, 94, GroupLayout.PREFERRED_SIZE)
+							.addGap(88)
+							.addComponent(mHome, GroupLayout.PREFERRED_SIZE, 94, GroupLayout.PREFERRED_SIZE))
+						.addGroup(gl_contentPane.createSequentialGroup()
+							.addGap(10)
+							.addComponent(mAppliantText)
+							.addGap(115)
+							.addComponent(mHomeText)))
+					.addPreferredGap(ComponentPlacement.RELATED, 88, Short.MAX_VALUE)
+					.addGroup(gl_contentPane.createParallelGroup(Alignment.LEADING)
+						.addGroup(gl_contentPane.createSequentialGroup()
+							.addGap(10)
+							.addComponent(mRetailerText))
+						.addComponent(mRetailers, GroupLayout.PREFERRED_SIZE, 94, GroupLayout.PREFERRED_SIZE))
+					.addContainerGap())
 		);
 		gl_contentPane.setVerticalGroup(
 			gl_contentPane.createParallelGroup(Alignment.LEADING)
 				.addGroup(gl_contentPane.createSequentialGroup()
-					.addGap(75)
-					.addGroup(gl_contentPane.createParallelGroup(Alignment.LEADING)
-						.addComponent(mRetailers, GroupLayout.PREFERRED_SIZE, 83, GroupLayout.PREFERRED_SIZE)
-						.addComponent(mHome, GroupLayout.PREFERRED_SIZE, 83, GroupLayout.PREFERRED_SIZE)
-						.addComponent(mAppliant, GroupLayout.PREFERRED_SIZE, 83, GroupLayout.PREFERRED_SIZE))
-					.addContainerGap(172, Short.MAX_VALUE))
+					.addGap(97)
+					.addGroup(gl_contentPane.createParallelGroup(Alignment.BASELINE)
+						.addComponent(mAppliant, GroupLayout.PREFERRED_SIZE, 93, GroupLayout.PREFERRED_SIZE)
+						.addComponent(mHome, GroupLayout.PREFERRED_SIZE, 93, GroupLayout.PREFERRED_SIZE)
+						.addComponent(mRetailers, GroupLayout.PREFERRED_SIZE, 93, GroupLayout.PREFERRED_SIZE))
+					.addPreferredGap(ComponentPlacement.RELATED)
+					.addGroup(gl_contentPane.createParallelGroup(Alignment.BASELINE)
+						.addComponent(mAppliantText)
+						.addComponent(mHomeText)
+						.addComponent(mRetailerText))
+					.addContainerGap(127, Short.MAX_VALUE))
 		);
 		contentPane.setLayout(gl_contentPane);
 	}
