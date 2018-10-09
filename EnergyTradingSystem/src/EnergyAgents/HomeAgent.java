@@ -31,8 +31,8 @@ public class HomeAgent extends Agent
     {
         this.totalEnergyConsumption = 0;
         this.budgetLimit = 75;
-        agentName = "Home";
-        agentName = "Home";
+        this.agentName = "Home";
+        this.agentType = "Home";
     }
 
     public HomeAgent()
@@ -45,7 +45,7 @@ public class HomeAgent extends Agent
     @Override
     protected void setup(){
         this.agentName += "_" + getAID().getLocalName();
-        System.out.println(agentName + ": created.");
+        System.out.println(agentName + " " + agentType + ": created.");
         
         //Register the service
         ServiceDescription sd = new ServiceDescription();
