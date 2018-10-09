@@ -48,7 +48,7 @@ public class HomeAgent extends Agent
     @Override
     protected void setup(){
         this.agentName += "_" + getAID().getLocalName();
-        System.out.println(agentName + ": created.");
+        System.out.println(agentName + " " + agentType + ": created.");
         
         //Register the service
         ServiceDescription sd = new ServiceDescription();
