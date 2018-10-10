@@ -1,1 +1,5 @@
+<<<<<<< HEAD
+( ap-description  :name "10.1.14.255:1099/JADE" :ap-services (set ( ap-service  :name fipa.mts.mtp.http.std :type fipa.mts.mtp.http.std :addresses (sequence http://10.1.14.255:7778/acc))))
+=======
 ( ap-description  :name "10.1.6.75:1099/JADE" :ap-services (set ( ap-service  :name fipa.mts.mtp.http.std :type fipa.mts.mtp.http.std :addresses (sequence http://10.1.6.75:7778/acc))))
+>>>>>>> d4bfe316fe512cbfa0bcc314aab84b8584c9619a
