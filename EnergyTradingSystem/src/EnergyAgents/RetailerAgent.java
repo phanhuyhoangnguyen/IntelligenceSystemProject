@@ -413,7 +413,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 	/* ----- GUI ---- */
 	@Override
 	public void showGUI() {
-		RetailerGUI gui = new RetailerGUI(this);
+		RetailerGUIDetails gui = new RetailerGUIDetails(this);
 		gui.showGUI();
 	}
 	
