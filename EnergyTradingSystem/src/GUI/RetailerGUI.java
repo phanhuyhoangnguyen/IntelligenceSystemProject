@@ -1,214 +1,236 @@
 package GUI;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.EventQueue;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 
-import javax.swing.Box;
-import javax.swing.BoxLayout;
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.JButton;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
-import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
-import javax.swing.border.EmptyBorder;
+import java.awt.event.*;
+import java.util.List;
+import java.awt.*;
+import javax.swing.*;
+import javax.swing.GroupLayout.*;
+import javax.swing.LayoutStyle.*;
+import javax.swing.border.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableModel;
 
-import EnergyAgents.RetailerAgent;
-import jade.core.Agent;
+import EnergyAgents.JadeController;
+import jade.wrapper.AgentController;
+import jade.wrapper.AgentState;
+import jade.wrapper.StaleProxyException;
 
-/**
- * Retailer GUI
- * 
- * @author Tola
- *
- */
-public class RetailerGUI {
+public class RetailerGUI extends JFrame {
 
-	private RetailerAgent myAgent;
+	private List<AgentController> retailerAgents;
 	
 	
-	public RetailerGUI(RetailerAgent agent) {
-		myAgent = agent;
+	
+	private JTable table;
+	
+	
+	
+	public void applyRetailersAgent()
+	{
+		
 	}
 	
-	public void showGUI() {
-		EventQueue.invokeLater(new Runnable() {
-	         public void run() {
-	        	 RetailerFrame frame = new RetailerFrame();
-		    		frame.setVisible(true);
-		    		System.out.println(myAgent.getLocalName() + " GUI is shown");
-	         }
-	      });
+	public RetailerGUI(List<AgentController> retailerAgents)
+	{
+		
+		this.retailerAgents = retailerAgents;
+		
+		setTitle("Retailers Interface");
+		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+		setLocationRelativeTo(null);
+		setResizable(false);
+		
+        
+        table = new JTable(new AgentTableModel());
+        
+        JScrollPane tablePane = new JScrollPane(table);
+        //table.setPreferredScrollableViewportSize(new Dimension(200,15* numberOfAgents));
+		table.setFillsViewportHeight(true);
+		table.getColumnModel().getColumn(0).setPreferredWidth(400);
+		table.setRowSelectionAllowed(true);
+		table.setRowSelectionInterval(0, 0);	// select first row
+		
+		
+		/*
+		 * This method Change the state of Agents.
+		 */
+		JButton startBtn = new JButton("Start/Stop");
+		startBtn.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				int row = table.getSelectedRow();
+				if ( row < 0 ) {
+					return;
+				}
+				try {
+					int state = retailerAgents.get(row).getState().getCode();
+					
+					if ( state == AgentState.cAGENT_STATE_SUSPENDED ) {
+						table.getModel().setValueAt("start", row, 1);
+					}else {
+						table.getModel().setValueAt("stop", row, 1);
+					}
+					
+				} catch (StaleProxyException e1) {
+					e1.printStackTrace();
+				}
+				
+				
+			}
+		});
+		
+		/*
+		 * This method start all the Agents
+		 */
+		JButton startAllbtn = new JButton("Start All");
+		startAllbtn.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				for(int i = 0; i < retailerAgents.size(); i++) {
+					try {
+						int state = retailerAgents.get(i).getState().getCode();
+						if ( state == AgentState.cAGENT_STATE_SUSPENDED ) {
+							table.getModel().setValueAt("start", i, 1);
+						}
+					} catch (StaleProxyException e1) {
+						e1.printStackTrace();
+					}
+				}
+			}
+		});
+		/*
+		 * This method kill all the Agents
+		 */
+		JButton stopAllbtn = new JButton("Stop All");
+		stopAllbtn.addActionListener(new ActionListener() {
+			
+			public void actionPerformed(ActionEvent e) {
+				for(int i = 0; i < retailerAgents.size(); i++) {
+					try {
+						int state = retailerAgents.get(i).getState().getCode();
+						if ( state != AgentState.cAGENT_STATE_SUSPENDED ) {
+							table.getModel().setValueAt("stop", i, 1);
+						}
+					} catch (StaleProxyException e1) {
+						e1.printStackTrace();
+					}
+				}
+			}
+		});
+		
+		///Need Passing Value
+		JButton setSelectedBtn = new JButton("Set Property");
+		setSelectedBtn.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				int row = table.getSelectedRow();
+				if ( row > -1 ) {
+					JadeController.showAgentGUI(retailerAgents.get(row));
+				}
+			}
+		});
+		
+		
+		/* add layout */
+		Border padding = BorderFactory.createEmptyBorder(10, 10, 10, 10);
+		
+		JPanel listPane = new JPanel();
+		listPane.setBorder(padding);
+		listPane.add(tablePane);
+		
+		JPanel btnStartStopPane = new JPanel();
+		btnStartStopPane.setLayout(new BoxLayout(btnStartStopPane, BoxLayout.X_AXIS));
+		btnStartStopPane.add(startAllbtn);
+		btnStartStopPane.add(Box.createRigidArea(new Dimension(10, 0)));
+		btnStartStopPane.add(stopAllbtn);
+		btnStartStopPane.setAlignmentX(Component.LEFT_ALIGNMENT);
+		btnStartStopPane.setAlignmentY(Component.TOP_ALIGNMENT);
+		btnStartStopPane.setPreferredSize(btnStartStopPane.getPreferredSize());
+		
+		JPanel buttonPane = new JPanel();
+		buttonPane.setLayout(new BoxLayout(buttonPane, BoxLayout.Y_AXIS));
+		buttonPane.setBorder(padding);
+		buttonPane.add(startBtn);
+		buttonPane.add(Box.createRigidArea(new Dimension(0, 10)));
+		buttonPane.add(btnStartStopPane);
+		buttonPane.add(Box.createRigidArea(new Dimension(0, 10)));
+		buttonPane.add(setSelectedBtn);
+		buttonPane.setAlignmentX(Component.CENTER_ALIGNMENT);
+		buttonPane.setAlignmentY(Component.TOP_ALIGNMENT);
+		
+		Container contentPane = getContentPane();
+		contentPane.setLayout(new BorderLayout());
+		contentPane.add(listPane, BorderLayout.CENTER);
+		contentPane.add(buttonPane, BorderLayout.EAST);
+		
+		// set frame size
+		//setSize(600, 600);
+		setPreferredSize(getPreferredSize());
+		pack();
+		
+		// center
+		Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
+		setLocation(dim.width/2-this.getSize().width/2, dim.height/2-this.getSize().height/2);
 	}
-
-	
 	
 	/**
-	 * Inner class - Retailer Frame
+	 * Inner class to generate agents table
 	 */
-	class RetailerFrame extends JFrame {
-		private String title = "Retailer Agent: " + myAgent.getLocalName();
-		private JFrame thisFrame;
-		
-		public RetailerFrame() {
-			thisFrame = this;
-			
-			JLabel lblAgentName = new JLabel("Retailer Agent : " + myAgent.getName());
-			lblAgentName.setFont(new Font(lblAgentName.getFont().getFontName(), Font.BOLD, 14));
-			
-			JPanel inputPane = new JPanel();
-			inputPane.setLayout(new GridLayout(0, 2, 2, 5));	// row,col, vspace, hspace
-			inputPane.setBorder(new EmptyBorder(5, 15, 10, 10));
-			
-			JLabel l1 = new JLabel("Usage Charge Price :", SwingConstants.RIGHT);
-			l1.setPreferredSize(l1.getPreferredSize());
-			inputPane.add(l1);
-			
-			JTextField txtUsageCharge = new JTextField(16);
-			txtUsageCharge.setText( Double.toString(myAgent.getUsageCharge()) );
-			inputPane.add(txtUsageCharge);
-			
-			
-			JLabel l2 = new JLabel("Over Charge Price :", SwingConstants.RIGHT);
-			l2.setPreferredSize(l2.getPreferredSize());
-			inputPane.add(l2);
-			
-			JTextField txtOverCharge = new JTextField(16);
-			txtOverCharge.setText(Double.toString(myAgent.getOverCharge()));
-			inputPane.add(txtOverCharge);
-			
-			
-			
-			JLabel l3 = new JLabel("Limit Negotiation Price :", SwingConstants.RIGHT);
-			l3.setPreferredSize(l3.getPreferredSize());
-			inputPane.add(l3);
-			
-			JTextField txtLimitPrice = new JTextField(16);
-			txtLimitPrice.setText(Double.toString(myAgent.getNegotiationLimitPrice()));
-			inputPane.add(txtLimitPrice);
-			
-			
-			
-			JLabel l4 = new JLabel("Limit Counter Offer :", SwingConstants.RIGHT);
-			l4.setPreferredSize(l4.getPreferredSize());
-			inputPane.add(l4);
-			
-			JTextField txtCounterOffer = new JTextField(16);
-			txtCounterOffer.setText(Integer.toString(myAgent.getNegotiationCounterOffer()));
-			inputPane.add(txtCounterOffer);
-			
-			
-			
-			JLabel l5 = new JLabel("Waiting Time (sec) :", SwingConstants.RIGHT);
-			l5.setPreferredSize(l5.getPreferredSize());
-			inputPane.add(l5);
-			
-			JTextField txtWaitTime = new JTextField(10);
-			txtWaitTime.setText(Long.toString(myAgent.getNegotiationTimeWait()));
-			inputPane.add(txtWaitTime);
-			
-			
-			
-			JLabel l6 = new JLabel("Mechanism :", SwingConstants.RIGHT);
-			l6.setPreferredSize(l6.getPreferredSize());
-			inputPane.add(l6);
-			
-			JComboBox cbMechanism = new JComboBox();
-			cbMechanism.setModel( new DefaultComboBoxModel<>(RetailerAgent.Mechanism.values()));
-			inputPane.add(cbMechanism);
-			
-			
-			// button group
-			JPanel buttonPane = new JPanel();
-			buttonPane.setLayout(new BoxLayout(buttonPane, BoxLayout.Y_AXIS));
-			buttonPane.setBorder(new EmptyBorder(10, 10, 10, 10));
-			
-			Dimension buttonSize = new Dimension(100, 25);
-			
-			JButton btnSet = new JButton(" Save ");
-			btnSet.setMinimumSize(buttonSize);
-			btnSet.setPreferredSize(buttonSize);
-			btnSet.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) {
-					try {
-						myAgent.setUsageCharge(Double.parseDouble(txtUsageCharge.getText()));
-						myAgent.setOverCharge(Double.parseDouble(txtOverCharge.getText()));
-						myAgent.setNegotiationLimitPrice(Double.parseDouble(txtLimitPrice.getText()));
-						myAgent.setNegotiationCounterOffer(Integer.parseInt(txtCounterOffer.getText()));
-						myAgent.setNegotiationTimeWait(Long.parseLong(txtWaitTime.getText()));
-						
-						RetailerAgent.Mechanism mechanism = RetailerAgent.Mechanism.valueOf(cbMechanism.getSelectedItem().toString());
-						myAgent.setNegotiationMechanism(mechanism);
-						
-						
-						// test
-						System.out.println(myAgent.toString());
-					} catch( NumberFormatException nfe) {
-						nfe.printStackTrace();
-						return;
-					}catch( Exception ex) {
-						ex.printStackTrace();
-						return;
-					}
-					btnSet.setEnabled(false);
-					thisFrame.dispose();
-				}
-			});
-			buttonPane.add(btnSet);
-			
-			// space
-			buttonPane.add(Box.createRigidArea(new Dimension(10, 10))); 
-			
-			JButton btnClose = new JButton(" Close ");
-			btnClose.setMinimumSize(buttonSize);
-			btnClose.setPreferredSize(buttonSize);
-			btnClose.addActionListener(new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) {
-					thisFrame.dispose();
-				}
-			});
-			buttonPane.add(btnClose);
-			
-			// add to frame
-			Container pane = getContentPane();
-			pane.add(lblAgentName, BorderLayout.NORTH);
-			pane.add(inputPane, BorderLayout.CENTER);
-			pane.add(buttonPane, BorderLayout.EAST);
-			
-			setTitle(title);
-			//setPreferredSize(getPreferredSize());
-			pack();
-			
-			// center
-			//Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
-			//this.setLocation(dim.width/2-this.getSize().width/2, dim.height/2-this.getSize().height/2);
-			setLocationRelativeTo(null);
-			setResizable(false);
-			setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-			
-		}
-		
-		
-		
-		
-		
-	} // end retailer frame
+	private class AgentTableModel extends AbstractTableModel {
+		private String[] columnNames = {"Agent Name", "Status" };
 	
+		public int getColumnCount() {
+            return columnNames.length;
+        }
 	
+		public int getRowCount() {
+            return retailerAgents.size();
+        }
+	
+		public String getColumnName(int col) {
+            return columnNames[col];
+        }
+ 
+        public Object getValueAt(int row, int col) {
+            try {
+            	if ( col == 0 ) {
+            		String name = retailerAgents.get(row).getName();
+            		return name.substring(0, name.indexOf("@"));
+            	}else { // col = 1
+            		if ( retailerAgents.get(row).getState().getCode() == AgentState.cAGENT_STATE_SUSPENDED ) {
+            			return "Stopped";
+            		}else {
+            			return "Started";
+            		}
+            	}
+			} catch (StaleProxyException e) {
+				e.printStackTrace();
+				return "NAN";
+			}
+        }
+        
+        public void setValueAt(Object value, int row, int col) {
+        	String status = (String) value;
+        	if ( status.toLowerCase() == "start" ) {
+        		try {
+					retailerAgents.get(row).activate();;
+				} catch (StaleProxyException e) {
+					e.printStackTrace();
+				}
+        	}else {
+        		try {
+					retailerAgents.get(row).suspend();
+				} catch (StaleProxyException e) {
+					e.printStackTrace();
+				}
+        	}
+        	
+        	// update table
+        	fireTableCellUpdated(row, col);
+        }
+        
+	}
 }
