@@ -5,9 +5,5 @@
 	<classpathentry kind="lib" path="lib/jade.jar"/>
 	<classpathentry kind="lib" path="lib/sqlite-jdbc-3.23.1.jar"/>
 	<classpathentry kind="lib" path="lib/opencsv-4.2.jar"/>
-<<<<<<< HEAD
-=======
-	<classpathentry kind="lib" path="lib/commons-lang3-3.8.1.jar"/>
->>>>>>> d4bfe316fe512cbfa0bcc314aab84b8584c9619a
 	<classpathentry kind="output" path="bin"/>
 </classpath>
