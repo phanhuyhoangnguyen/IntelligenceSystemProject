@@ -3,6 +3,7 @@ package EnergyAgents;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.FSMBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.AMSService;
@@ -34,7 +35,7 @@ import com.opencsv.*;
 import database.DbHelper;
 
 /**
- * ApplicantEnum 
+ * ApplianceAgent
  * @author Phan
  * 
  * @Description The applicant agent compute its energy usage and send it to the HomeAgent periodically
@@ -69,35 +70,44 @@ public class ApplianceAgent extends Agent {
 
 	protected void setup() {
 		Object[] args = getArguments();				// Arguments should be in format: AgentName:EnergyAgents.AppianceAgent("Appliance","ApplianceName"); 
-        this.applicantName = args[1].toString();
-        
-        System.out.println("Appliance Agent" + getLocalName() + " is created!");
-        // Create Service Description to be registered
-        ServiceDescription sd  = new ServiceDescription();
-        sd.setType(args[0].toString());
-        sd.setName(getApplicantName());
-        
-        // calling Agent's method to start the registration process
-        register(sd);
-        
-        searchForHomeAgent(HomeAgentService);
-        
-        // Send Request to Home Agent for buy energy with prediction amount
-		
-        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
-    
-            protected void onTick() {							// TODO: this can be changed with FNSM
-            	sendActualUsage();
-            	
-            	String predictionUsage = predictUsage();		//TODO: define this later
-            	
-                // sendRequestBuyingEnergyToHome(""); 			// TODO: update with the predictionUsage later
-            }
-        };
-        
-        // Sending message every 5 seconds
-        addBehaviour(communicateToHome);
+		if (args != null && args.length > 0) {
+			this.applicantName = args[1].toString();
+	        
+	        System.out.println("Appliance Agent: " + getLocalName() + " is created!");
+	        
+	        // Stage 1 - Create Service Description to be registered from the arguments // TODO: this can be changed with FNSM
+	        ServiceDescription sd  = new ServiceDescription();
+	        sd.setType(args[0].toString());
+	        sd.setName(getApplicantName());
+	        
+	        // calling Agent's method to start the registration process
+	        register(sd);
+	        
+	        // Stage 2 - Search for home agent
+	        this.homeAgent = searchForHomeAgent(HomeAgentService);
+	        
+	        // Send Request to Home Agent for buy energy with prediction amount
+	        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
+	    
+	            protected void onTick() {
+	            	// Stage 3: Predict Energy Usage Needed
+	            	String predictionUsage = predictUsage();					//TODO: define this later
+	            	
+	            	// Stage 4: Send request to HomeAgent
+	                sendRequestBuyingEnergyToHome(predictionUsage); 			// TODO: update with the predictionUsage later
+	            	
+	            	// Stage 5: Send Actual Usage - this is only trigger when the stage 4 is completed
+	            	// sendActualUsage();
+	            }
+	        };
+	        
+	        // Sending message every 5 seconds
+	        addBehaviour(communicateToHome);
+		} else {
+			System.out.println(getLocalName() + ": " + "You have not specified any arguments.");
+		}
     }
+
 
 	private AID searchForHomeAgent(String service) {
 		AID homeAgent = null;
@@ -107,7 +117,7 @@ public class ApplianceAgent extends Agent {
 	    	homeAgent = agent[0].getName();
 	    }
 	    else {
-	           	System.out.println("Home Service is not found!");
+	        System.out.println("Home Service is not found!");
 	    }
 	    return homeAgent;
 	}
@@ -135,7 +145,7 @@ public class ApplianceAgent extends Agent {
 	
 	private void sendRequestBuyingEnergyToHome(String predictionUsage) {
 		ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-    	msg.addReceiver(this.homeAgent);
+    	msg.addReceiver(getHomeAgent());								// this.homeAgent
         // Set the interaction protocol
     	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
 
@@ -146,7 +156,6 @@ public class ApplianceAgent extends Agent {
     	msg.setContent("Prediction Usage: " + predictionUsage);
 
     	// Define the AchieveREInitiator behaviour with the message
-    	// TODO: how to do nested behaviour, this is also need to be invoked periodically
     	addBehaviour(new AchieveREInitiator(this, msg) {
     		// Method to handle an agree message from responder
     		protected void handleAgree(ACLMessage agree) {
@@ -237,7 +246,7 @@ public class ApplianceAgent extends Agent {
             // Add this Service Description to DFAgentDescription
             dfd.addServices(sd);
 
-            // Register Agent’s Service with DF
+            // Register Agent's Service with DF
             DFService.register(this, dfd);
         }
 
@@ -265,8 +274,8 @@ public class ApplianceAgent extends Agent {
 	
 	 // Method to de register the service (on take down)
     protected void takeDown() {
-    	/* try { DFService.deregister(this); }
-    	catch (Exception e) {} */
+    	try { DFService.deregister(this); }
+    	catch (Exception e) {}
     }
 
 
@@ -286,7 +295,6 @@ public class ApplianceAgent extends Agent {
             // Block the behaviour from terminating and keep listening to the message
             block();
 		}
-		
 	}
 	
 	protected void setApplicantID(String applicantName) {
