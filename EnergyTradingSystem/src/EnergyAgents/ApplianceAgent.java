@@ -5,6 +5,7 @@ import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.FSMBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
+import jade.core.behaviours.SequentialBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.AMSService;
 import jade.domain.DFService;
@@ -41,7 +42,8 @@ import database.DbHelper;
  * @Description The applicant agent compute its energy usage and send it to the HomeAgent periodically
  */
 public class ApplianceAgent extends Agent {
-	private String applicantName;
+	private String applianceName;
+	private String serviceType;
 	
 	// For Message Communication to HomeAgent
 	private static final int UPATE_DURATION = 10000;				// 10s -> specify the frequency of message sent to Home Agent. 
@@ -60,6 +62,11 @@ public class ApplianceAgent extends Agent {
 	private AID homeAgent;
 	private static final String HomeAgentService = "Home";
 	
+	// For FSM
+	// State names
+	private static final String STATE_1 = "ReportingPrediction";
+	private static final String STATE_2 = "ReportingActualUsage";
+	
 	public ApplianceAgent () {
 		
 		// this is set for skipping the first row in CSV file below
@@ -71,43 +78,84 @@ public class ApplianceAgent extends Agent {
 	protected void setup() {
 		Object[] args = getArguments();				// Arguments should be in format: AgentName:EnergyAgents.AppianceAgent("Appliance","ApplianceName"); 
 		if (args != null && args.length > 0) {
-			this.applicantName = args[1].toString();
-	        
+			this.applianceName = args[1].toString();
+	        this.serviceType = args[0].toString();
 	        System.out.println("Appliance Agent: " + getLocalName() + " is created!");
 	        
-	        // Stage 1 - Create Service Description to be registered from the arguments // TODO: this can be changed with FNSM
-	        ServiceDescription sd  = new ServiceDescription();
-	        sd.setType(args[0].toString());
-	        sd.setName(getApplicantName());
+	        SequentialBehaviour sb = new SequentialBehaviour();
 	        
-	        // calling Agent's method to start the registration process
-	        register(sd);
+	        registerService registerService = new registerService();
+	        searchHomeAgent searchHomeAgent = new searchHomeAgent();
 	        
-	        // Stage 2 - Search for home agent
-	        this.homeAgent = searchForHomeAgent(HomeAgentService);
-	        
-	        // Send Request to Home Agent for buy energy with prediction amount
+	        // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
 	        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
 	    
 	            protected void onTick() {
-	            	// Stage 3: Predict Energy Usage Needed
-	            	String predictionUsage = predictUsage();					//TODO: define this later
 	            	
-	            	// Stage 4: Send request to HomeAgent
-	                sendRequestBuyingEnergyToHome(predictionUsage); 			// TODO: update with the predictionUsage later
-	            	
-	            	// Stage 5: Send Actual Usage - this is only trigger when the stage 4 is completed
-	            	// sendActualUsage();
+	            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
+
+	    	        // Register state Predicting and Request to buy
+	            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+	    	        
+	    	        // Register state Reporting Actual Usage
+	            	communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+	    	        
+	    	        addBehaviour(communicationSequence);
+
 	            }
 	        };
 	        
+	        sb.addSubBehaviour(registerService);
+	        sb.addSubBehaviour(searchHomeAgent);	 
+	        
 	        // Sending message every 5 seconds
-	        addBehaviour(communicateToHome);
+	        sb.addSubBehaviour(communicateToHome);
+	        
+	        // add sequential behaviour to the Agent
+	        addBehaviour(sb);
 		} else {
 			System.out.println(getLocalName() + ": " + "You have not specified any arguments.");
 		}
     }
-
+	
+	// This behaviour perform service register 
+    private class registerService extends OneShotBehaviour {
+    	public void action() {
+    		 // Create Service Description to be registered from the arguments
+	        ServiceDescription sd  = new ServiceDescription();
+	        sd.setType(getServiceType());
+	        sd.setName(getApplianceName());
+	        
+	        // calling Agent's method to start the registration process
+	        register(sd);
+    	}
+    }
+    
+    // This behaviour search for home agent
+    private class searchHomeAgent extends OneShotBehaviour {
+    	public void action() {
+    		// Search for home agent
+    		setHomeAgent(searchForHomeAgent(HomeAgentService));
+    	}
+    }
+    
+    // This behaviour search for home agent
+    private class reportingEnergyUsagePrediction extends OneShotBehaviour {
+    	public void action() {
+    		String predictionUsage = predictUsage();
+        	
+        	// Send request to HomeAgent
+            sendRequestBuyingEnergyToHome(predictionUsage); 
+    	}
+    }
+    
+    // This behaviour send actual energy usage to home
+    private class reportingActualEnergyUsage extends OneShotBehaviour {
+    	public void action() {
+        	// this is only trigger when the stage 1 is completed
+        	sendActualUsage();
+    	}
+    }
 
 	private AID searchForHomeAgent(String service) {
 		AID homeAgent = null;
@@ -190,7 +238,7 @@ public class ApplianceAgent extends Agent {
 	}
 	
 	protected String predictUsage() {
-		int dataIndex = applicantDict.get(this.applicantName.toUpperCase());
+		int dataIndex = applicantDict.get(this.applianceName.toUpperCase());
 		final int TIME_INDEX = 1;
 		
     	File directory = new File(pathToCSV);
@@ -297,12 +345,24 @@ public class ApplianceAgent extends Agent {
 		}
 	}
 	
-	protected void setApplicantID(String applicantName) {
-		this.applicantName = applicantName;
+	protected ApplianceAgent getApplianceAgent() {
+		return this;
 	}
 	
-	public String getApplicantName() {
-		return this.applicantName;
+	protected void setApplianceName(String applianceName) {
+		this.applianceName = applianceName;
+	}
+	
+	public String getApplianceName() {
+		return this.applianceName;
+	}
+	
+	protected void setServiceType (String serviceType) {
+		this.serviceType = serviceType;
+	}
+	
+	public String getServiceType() {
+		return this.serviceType;
 	}
 	
 	private int setActualLivedSeconds(int actualLivedSeconds) {
@@ -313,13 +373,17 @@ public class ApplianceAgent extends Agent {
 		return this.actualLivedSeconds;
 	}
 	
+	private void setHomeAgent(AID homeAgent) {
+		this.homeAgent = homeAgent;
+	}
+	
 	private AID getHomeAgent() {
 		return this.homeAgent;
 	}
 	
 	// Energy Consumption Stimulation - Agent doesn't actual consume energy, it reads from data file and return
 	private Double getActualEnergyUsage(int timeDuration) {
-		int dataIndex= applicantDict.get(this.applicantName.toUpperCase());
+		int dataIndex= applicantDict.get(this.applianceName.toUpperCase());
 		Double totalUsage = 0.0;
     	File directory = new File(pathToCSV);
  	   
@@ -388,4 +452,3 @@ public class ApplianceAgent extends Agent {
 		applicantDict.put("UNE", 24);
 	}
 }
-		
