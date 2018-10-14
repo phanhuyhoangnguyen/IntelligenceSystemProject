@@ -2,13 +2,15 @@ package EnergyAgents;
 
 import jade.core.Agent;
 import jade.core.AID;
-import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.OneShotBehaviour;
+import jade.core.behaviours.*;
+
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.*;
 import jade.domain.FIPAException;
+
+import java.util.*;
 
 
 
@@ -21,11 +23,23 @@ import jade.domain.FIPAException;
 
 public class HomeAgent extends Agent
 {
-    //Variables for agents (Dynamic)
-    private float totalEnergyConsumption;
-    private float budgetLimit;
+    /*Variables for agents (Dynamic)*/
+    // Agent Identification
     private String agentName;
     private String agentType;
+
+    //Total energy consumption get from appliance agent
+    private float totalEnergyConsumption;
+
+    //The budget is set by user
+    private double budgetLimit;
+
+    //For waiting
+    Random rand = newRandom();
+
+    //Best offer
+    private ACLMessage bestOffer;
+    private ACLMessage message;
 
     /**
      * Initialize value for home agent
@@ -37,11 +51,33 @@ public class HomeAgent extends Agent
         agentName = "Home";
         agentType = "Home";
     }
+    /**
+     * End of initialize value for home agent
+     */
+
+    
+    /**
+     * Getter and Setter
+      */
+    public double getBudgetLimit()
+    {
+        return this.budgetLimit;
+    }
+
+    public void setBudgetLimit(double newBudgetLimit)
+    {
+        this.budgetLimit = newBudgetLimit;
+    }
+     /**
+      * End of Getter and Setter
+      */
 
     public HomeAgent()
     {
         init();
     }
+
+    /* --- Jade functions --- */
     /**
      * Set Up Home Agent
      */
@@ -56,11 +92,21 @@ public class HomeAgent extends Agent
         sd.setName(this.agentName);
         register(sd);
         
-        
+        message = newMessage(ACLMessage.QUERY_REF);
+
 
         //Add behaviours
         //addBehaviour(new ReceiveDemand());
         addBehaviour(new TestBehaviour());
+        SequentialBehaviour seq = new SequentialBehaviour();
+        addBehaviour(seq);
+        
+        //Add parallel behaviour to handle conversations
+        //WHEN_ALL: terminiate the behaviour when all its children are done
+        ParallelBehaviour par = new ParallelBehaviour(ParallelBehaviour.WHEN_ALL);
+
+        seq.addSubBehaviour(par);
+
     }
 
     /**
@@ -125,10 +171,12 @@ public class HomeAgent extends Agent
         return null;        
     }
 
+
+    /* --- Jade Agent behaviour classes --- */
     /**
      * Receive demand from Appliances
      */
-    private class ReceiveDemand extends CyclicBehaviour{
+    private class ReceiveDemandBehaviour extends CyclicBehaviour{
         public void action(){
             System.out.println(getLocalName() + ": waiting for demand from Applicant Agents");
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
@@ -154,7 +202,7 @@ public class HomeAgent extends Agent
     /**
      * Negotitate with Retailer Agents
      */
-    private class negotiateContract extends CyclicBehaviour{
+    private class negotiateContractBehaviour extends CyclicBehaviour{
         public void action(){
             System.out.println(getLocalName() + ": begin negotiate with Retailer Agents ");
             ACLMessage msg = receive();
@@ -195,5 +243,47 @@ public class HomeAgent extends Agent
                 myAgent.send(msg);
             }
         }
+    }
+
+    
+
+
+    /* --- GUI --- */
+    //TODO: Add GUI
+
+    /* --- Utility methods --- */
+    protected static int cidCnt = 0;
+    String cidBase;
+
+    //This method is used to generate unique ID for each conversations
+    private String generateCID()
+    {
+        if(cidBase==null){
+            cidBase = getLocalName() + hashCode() + System.currentTimeMillis()%10000 + "_";
+        }
+        return cidBase + (cidCnt++);
+    }
+
+    //This method is used to generate unique Random generator
+    private Random newRandom()
+    {
+        return new Random(hashCode() + System.currentTimeMillis());
+    }
+
+    //This method is used to initialize ACLMessages
+    private ACLMessage newMessage(int perf, String content, AID destination)
+    {
+        ACLMessage message = newMessage(perf);
+        if ( destination != null){
+            message.addReceiver(destination);
+        }
+        message.setContent(content);
+        return message;
+    }
+    private ACLMessage newMessage(int perf)
+    {
+        ACLMessage message = new ACLMessage(perf);
+        message.setConversationId(generateCID());
+        return message;
     }
 }
