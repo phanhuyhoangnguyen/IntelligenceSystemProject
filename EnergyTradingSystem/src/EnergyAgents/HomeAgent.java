@@ -92,8 +92,9 @@ public class HomeAgent extends Agent
         sd.setName(this.agentName);
         register(sd);
         
+        //initialize message and template
         message = newMessage(ACLMessage.QUERY_REF);
-
+        MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(message.getConversationId() ));
 
         //Add behaviours
         //addBehaviour(new ReceiveDemand());
@@ -107,6 +108,12 @@ public class HomeAgent extends Agent
 
         seq.addSubBehaviour(par);
 
+        AID[] aids = getRetailerAgents("Retailers");
+        for( AID aid : aids){
+            message.addReceiver(aid);
+
+        }
+        
     }
 
     /**
@@ -245,7 +252,76 @@ public class HomeAgent extends Agent
         }
     }
 
-    
+
+    //Declare ReiverBehaviour - this behaviour controls the characteristic of behaviour as well as it life time
+    private class ReceiverBehaviour extends SimpleBehaviour
+    {
+        private MessageTemplate template;
+        private long timeOut, wakeupTime;
+        private boolean finished;
+        private ACLMessage message;
+
+        public ACLMessage getMessage(){
+            return message;
+        }
+        public ReceiverBehaviour(Agent a, int millis, MessageTemplate mt){
+            super(a);
+            timeOut = millis;
+            template = mt;
+        }
+
+        public void onStart()
+        {
+            wakeupTime = (timeOut < 0 ? Long.MAX_VALUE:System.currentTimeMillis() + timeOut);
+        }
+
+        public boolean done()
+        {
+            return finished;
+        }
+
+        public void action()
+        {
+            /**Check whether tempalte is available */
+            if(template == null){
+                message = myAgent.receive();
+            }
+            else{
+                message = myAgent.receive(template);
+            }
+
+            if(message != null){
+                finished = true;
+                handle(message);
+                return;
+            }
+
+            long dt = wakeupTime - System.currentTimeMillis();
+            if( dt > 0){
+                block(dt);
+            }
+            else{
+                finished = true;
+                handle(message);
+            }
+        }
+
+        public void handle(ACLMessage m){
+            /**can be redfined in sub_class */
+        }
+
+        /**Rest the behaviour */
+        public void reset(){
+            message = null;
+            finished = false;
+            super.reset();
+        }
+
+        public void reset(int dt){
+            timeOut = dt;
+            reset();
+        }
+    }
 
 
     /* --- GUI --- */
