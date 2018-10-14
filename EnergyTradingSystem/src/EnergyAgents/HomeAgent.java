@@ -33,6 +33,7 @@ public class HomeAgent extends Agent
 
     //The budget is set by user
     private double budgetLimit;
+    private double bestPrice;
 
     //For waiting
     Random rand = newRandom();
@@ -50,6 +51,7 @@ public class HomeAgent extends Agent
         this.budgetLimit = 75;
         agentName = "Home";
         agentType = "Home";
+        this.bestPrice = this.budgetLimit;
     }
     /**
      * End of initialize value for home agent
@@ -108,10 +110,26 @@ public class HomeAgent extends Agent
 
         seq.addSubBehaviour(par);
 
+        //Get all retailer agents
         AID[] aids = getRetailerAgents("Retailers");
+
+        //Get offer from retailer agents
         for( AID aid : aids){
             message.addReceiver(aid);
-
+            par.addSubBehaviour( new ReceiverBehaviour(this, 1000, template){
+                public void handle(ACLMessage message)
+                {
+                    if(message!=null){
+                        int offer = Integer.parseInt(message.getContent());
+                        System.out.println("Received offer $" + offer + " from " + message.getSender().getLocalName());
+                        //Compare with budgetLimit
+                        if(offer < bestPrice){
+                            bestPrice = offer;// set new better limit
+                            bestOffer = message;
+                        }
+                    }
+                }
+            });
         }
         
     }
