@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
-import com.opencsv.*;
+//import com.opencsv.*;
 
 import database.DbHelper;
 
@@ -237,7 +237,7 @@ public class ApplianceAgent extends Agent {
             // Add this Service Description to DFAgentDescription
             dfd.addServices(sd);
 
-            // Register Agent’s Service with DF
+            // Register Agentï¿½s Service with DF
             DFService.register(this, dfd);
         }
 

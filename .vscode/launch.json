@@ -325,6 +325,17 @@
         },
         {
             "type": "java",
+            "name": "Debug (Launch)-HomeReporterAgent",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.Boot",
+            "args": "-container -agents HomeReporterAgent_1:EnergyAgents.HomeReporterAgent;HomeReporterAgent_2:EnergyAgents.HomeReporterAgent;HomeReporterAgent_3:EnergyAgents.HomeReporterAgent;",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
             "name": "Debug (Launch)-HomeAgent",
             "request": "launch",
             "cwd": "${workspaceFolder}",
@@ -332,17 +343,6 @@
             "stopOnEntry": false,
             "mainClass": "jade.Boot",
             "args": "-container -agents HomeAgent:EnergyAgents.HomeAgent;",
-            "projectName": "EnergyTradingSystem"
-        },
-        {
-            "type": "java",
-            "name": "Debug (Launch)-HomeReporterAgent",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "console": "internalConsole",
-            "stopOnEntry": false,
-            "mainClass": "jade.Boot",
-            "args": "-container -agents HomeReporterAgent:EnergyAgents.HomeReporterAgent;",
             "projectName": "EnergyTradingSystem"
         },
         {
