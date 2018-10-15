@@ -26,13 +26,15 @@ public class Main {
 		// start retailer agents
 		createRetailerAgent();
 		
+		//start home agent
+		createHomeAgent();
 		
 		System.out.println("Main Class finished.");
 	}
 	
 	
 	private static void createRetailerAgent() {
-		System.out.println("Retailer Agenet start");
+		System.out.println("Retailer Agent start");
 		
 		
 		ContainerController retailerContainer = JadeController.createContainer("Retailer-Container");
@@ -43,5 +45,16 @@ public class Main {
 		
 	}
 	
-	
+	//Create Home Agent
+	private static void createHomeAgent()
+	{
+			System.out.println("Home Agent is starting");
+
+			// Create container for the home agent
+			ContainerController homeContainer = JadeController.createContainer("Home-Container");
+
+			AgentController homeAgent = JadeController.createAgent("Home Agent", "EnergyAgents.HomeAgent", homeContainer);
+			//TODO: Link with the GUI
+			//JadeController.showAgentGUI(homeAgent);
+	}
 }

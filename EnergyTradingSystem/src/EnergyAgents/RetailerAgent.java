@@ -512,7 +512,8 @@ public class RetailerAgent extends Agent implements GUIListener{
 						reply.setPerformative(ACLMessage.AGREE);
 						reply.setContent(Double.toString(usageCharge));
 						break;
-						
+					
+					//Home agent accept the offer
 					case ACLMessage.REJECT_PROPOSAL:
 					case ACLMessage.REFUSE:
 						System.out.println( agentName + " the negotiation was reject by " + senderName);
