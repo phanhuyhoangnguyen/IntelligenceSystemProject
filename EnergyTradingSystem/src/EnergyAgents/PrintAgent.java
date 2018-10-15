@@ -7,6 +7,8 @@ import jade.lang.acl.ACLMessage;
 
 public class PrintAgent extends Agent {
 
+	public static final String AGENT_NAME = "Print";
+	
 	private PrintGUI printGUI;
 	
 	@Override
@@ -15,7 +17,7 @@ public class PrintAgent extends Agent {
 		// show gui
 		printGUI = new PrintGUI(this);
 		printGUI.showGUI();
-		printGUI.append("<font color='blue'>Print Agent: started.</font>");
+		printGUI.append("<font color='green'>Print Agent: started.</font>");
 		
 		
 		// add listener behaviour for Inform message to print the content
