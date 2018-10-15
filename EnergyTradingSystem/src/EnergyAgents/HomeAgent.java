@@ -33,7 +33,11 @@ public class HomeAgent extends Agent
 
     //The budget is set by user
     private double budgetLimit;
+    private double duration;
+    private double idealBudgetLimit;
+    private double bestPriceProposal;
     private double bestPrice;
+    private double negoBestPrice;
 
     //For waiting
     Random rand = newRandom();
@@ -47,11 +51,16 @@ public class HomeAgent extends Agent
      */
     private void init()
     {
-        this.totalEnergyConsumption = 0;
-        this.budgetLimit = 75;
+        this.totalEnergyConsumption = 200;
+        this.duration = 1;
+        this.budgetLimit = 100;
+
         agentName = "Home";
         agentType = "Home";
-        this.bestPrice = this.budgetLimit;
+
+        this.bestOffer = null;
+        this.bestPrice = extractToBestPrice(this.totalEnergyConsumption, this.duration);
+        this.idealBudgetLimit = this.budgetLimit * 0.7;
     }
     /**
      * End of initialize value for home agent
@@ -100,7 +109,7 @@ public class HomeAgent extends Agent
 
         //Add behaviours
         //addBehaviour(new ReceiveDemand());
-        addBehaviour(new TestBehaviour());
+        //addBehaviour(new TestBehaviour());
         SequentialBehaviour seq = new SequentialBehaviour();
         addBehaviour(seq);
         
@@ -111,12 +120,15 @@ public class HomeAgent extends Agent
         seq.addSubBehaviour(par);
 
         //Get all retailer agents
-        AID[] aids = getRetailerAgents("Retailers");
-
+        //AID[] aids = getRetailerAgents("Retailer");
+        AID[] aids = getRetailerAgents("Test");
+        
+        System.out.println("Retailer agents total number:" + aids.length);
         //Get offer from retailer agents
         for( AID aid : aids){
             message.addReceiver(aid);
-            par.addSubBehaviour( new ReceiverBehaviour(this, 1000, template){
+            // Got 5s to get the receiver the offers before timeout
+            par.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template){
                 public void handle(ACLMessage message)
                 {
                     if(message!=null){
@@ -131,7 +143,76 @@ public class HomeAgent extends Agent
                 }
             });
         }
-        
+
+        //Handle request 
+        // Delay 3s before sending the request
+        seq.addSubBehaviour( new DelayBehaviour(this, rand.nextInt(3000)){
+            public void handleElapsedTimeout()
+            {
+                if(bestOffer == null){
+                    System.out.println("No offers.");
+                }
+                else{
+                    System.out.println("\nBest Price $" + bestPrice + " from " + bestOffer.getSender().getLocalName());
+
+                    System.out.println(idealBudgetLimit);
+
+                    ACLMessage reply = bestOffer.createReply();
+                    if( bestPrice > idealBudgetLimit){//negotiate the new price
+                        reply.setPerformative(ACLMessage.REQUEST);
+                        
+                        negoBestPrice = bestPrice * 0.9;
+
+                        reply.setContent("" + negoBestPrice);
+                        System.out.println(" Negotiation: Asking for price at $"+ reply.getContent());
+                        send(reply);
+                    }
+                    else{//Accept current offer
+                        reply.setPerformative(ACLMessage.REQUEST);
+                        reply.setContent(""+bestPrice);
+                        System.out.println("Accept Current Offer: $"+ reply.getContent());
+                        send(reply);                        
+                    }
+                }
+            }
+        });
+
+        //Get decision from retailers
+        // have 1s before timeout
+        seq.addSubBehaviour( new MyReceiverBehaviour( this, 1000,
+                MessageTemplate.and( 
+                    MessageTemplate.MatchConversationId( message.getConversationId()) ,
+                        MessageTemplate.or( 
+                            MessageTemplate.MatchPerformative( ACLMessage.AGREE ),
+                            MessageTemplate.MatchPerformative( ACLMessage.REFUSE ))) ) 
+				{
+					public void handle( ACLMessage message) 
+					{  
+						if (message != null ) {
+							System.out.println("Got " + 
+								ACLMessage.getPerformative(message.getPerformative() ) +
+								" from " + message.getSender().getLocalName());
+							
+							if( message.getPerformative() == ACLMessage.AGREE){
+                                System.out.println("Proposal Accepted");
+                                System.out.println("Proposal Offer: $"+ negoBestPrice);
+                                System.out.println("  --------- Finished ---------\n");
+                            }
+							else{//Refuse the proposal
+                                System.out.println("Propsal Refused");
+                                System.out.println("Original Offer: $"+bestPrice);
+                                System.out.println("  --------- Finished ---------\n");
+                            }
+								
+						} 
+						else {
+							System.out.println("==" + getLocalName() 
+								+" timed out");
+							//setup();//loop ultil get the order
+						}
+					}	
+				});
+        send(message);
     }
 
     /**
@@ -272,7 +353,7 @@ public class HomeAgent extends Agent
 
 
     //Declare ReiverBehaviour - this behaviour controls the characteristic of behaviour as well as it life time
-    private class ReceiverBehaviour extends SimpleBehaviour
+    private class MyReceiverBehaviour extends SimpleBehaviour
     {
         private MessageTemplate template;
         private long timeOut, wakeupTime;
@@ -282,7 +363,7 @@ public class HomeAgent extends Agent
         public ACLMessage getMessage(){
             return message;
         }
-        public ReceiverBehaviour(Agent a, int millis, MessageTemplate mt){
+        public MyReceiverBehaviour(Agent a, int millis, MessageTemplate mt){
             super(a);
             timeOut = millis;
             template = mt;
@@ -341,6 +422,38 @@ public class HomeAgent extends Agent
         }
     }
 
+    //This method is used for delay when the behaviour STARTs
+    private class DelayBehaviour extends SimpleBehaviour 
+    {
+        private long    timeout, 
+                        wakeupTime;
+        private boolean finished = false;
+        
+        public DelayBehaviour(Agent a, long timeout) {
+            super(a);
+            this.timeout = timeout;
+        }
+        
+        public void onStart() {
+            wakeupTime = System.currentTimeMillis() + timeout;
+        }
+            
+        public void action() 
+        {
+            long dt = wakeupTime - System.currentTimeMillis();
+            if (dt <= 0) {
+                finished = true;
+                handleElapsedTimeout();
+            } else 
+                block(dt);
+                
+        } //end of action
+        
+        protected void handleElapsedTimeout() // by default do nothing !
+            { } 
+                    
+        public boolean done() { return finished; }
+    }
 
     /* --- GUI --- */
     //TODO: Add GUI
@@ -348,6 +461,13 @@ public class HomeAgent extends Agent
     /* --- Utility methods --- */
     protected static int cidCnt = 0;
     String cidBase;
+
+    //This method is used to extract the consumption based on the total demand
+    private double extractToBestPrice(double demand, double duartion){
+        double bestPrice;
+        bestPrice = demand / duartion;
+        return bestPrice;
+    }
 
     //This method is used to generate unique ID for each conversations
     private String generateCID()
