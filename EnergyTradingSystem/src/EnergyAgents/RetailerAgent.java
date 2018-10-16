@@ -92,17 +92,17 @@ public class RetailerAgent extends Agent implements GUIListener{
 		agentType = "Retailer";
 		
 		currentUsage = 0;
-		usageCharge = getRandomDouble(20.0, 30.0);
+		usageCharge = getRandomDouble(40.0, 50.0);
 		overCharge = usageCharge + (usageCharge * 0.05);	// plus 5%
 		
 		negoPrice = usageCharge;
 		negoLimitPrice = negoPrice - (negoPrice * 0.15);	// eg. no more than 15%
-		negoIterateReduceBy = 0.05; // reduce by 0.05 percent in each counter
+		negoIterateReduceBy = getRandomDouble(0.2, 0.2); // reduce x percent in each counter
 		
 		negoMechanism = Mechanism.GENERAL;
 		negoCounterOffer = 3;
 		negoCounter = 0;
-		negoTimeWait = 5;	// 5 seconds
+		negoTimeWait = 15;	// 15 seconds
 		
 		
 		buyFrom = null;
@@ -277,11 +277,12 @@ public class RetailerAgent extends Agent implements GUIListener{
 		}
 		
 		// add contact net behaviour
-		 MessageTemplate template = MessageTemplate.and(
+		/*
+		MessageTemplate template = MessageTemplate.and(
 		  		MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
 		  		MessageTemplate.MatchPerformative(ACLMessage.CFP) );
 		addBehaviour( new ServicesReponder(this, template));
-		
+		*/
 		
 		// add behaviour to accept the offer
 		addBehaviour(new ServicesBehaviour());
@@ -326,7 +327,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 		@Override
 		protected ACLMessage prepareResponse(ACLMessage cfp) {
 			System.out.println(agentName + " start proposing " + String.valueOf(usageCharge) + " to " + cfp.getSender().getLocalName());
-			printGUI(agentName + " start proposing " + String.valueOf(usageCharge) + " to " + cfp.getSender().getLocalName());
+			printGUI(agentName + " start proposing <b>" + String.valueOf(usageCharge) + "</b> to " + cfp.getSender().getLocalName());
 			// create propose
 			ACLMessage propose = cfp.createReply();
 			propose.setPerformative(ACLMessage.PROPOSE);
@@ -435,27 +436,33 @@ public class RetailerAgent extends Agent implements GUIListener{
 			
 				// create a reply message
 				ACLMessage reply = msg.createReply();
+				//reply.setProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
 				
 				// correspondent for individual response from home agent
 				switch(msg.getPerformative()) {
 					// step 1: receive a request from home agent, then propose the negotiation price
-					case ACLMessage.REQUEST:
+					case ACLMessage.CFP:
 						resetNegotiation();
-						printGUI("----- Start Negotiation -----");
+						
 						System.out.println( agentName + " sends the first negotiation " + negoPrice);
 						printGUI(agentName + " sends the first negotiation for " + negoPrice);
 						
-						reply.setPerformative(ACLMessage.PROPOSE);
+						//reply.setConversationId(msg.getConversationId());
+						reply.setPerformative(ACLMessage.INFORM);
 						reply.setContent(Double.toString(negoPrice));
 						break;
 						
 					// step 2: receive the counter offer from home agent, then calculate the offer
-					case ACLMessage.PROPOSE:
+					case ACLMessage.REQUEST:
 						double offer = 0;
 						// check the content is double
 						try {
 							offer = Double.parseDouble(content);
 						}catch ( NumberFormatException nfe) {
+							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+							reply.setContent("NOT UNDERSTOOD");
+							break;
+						}catch ( NullPointerException npe) {
 							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
 							reply.setContent("NOT UNDERSTOOD");
 							break;
@@ -465,9 +472,9 @@ public class RetailerAgent extends Agent implements GUIListener{
 						long timeNow = System.currentTimeMillis() / 1000;
 						if ( timeNow - negoTimeStart > negoTimeWait ) {
 							System.out.println( agentName + " sends expire message");
-							printGUI( agentName + "sends expire message");
+							printGUI( agentName + "sends time-out");
 							reply.setPerformative(ACLMessage.REFUSE);
-							reply.setContent("Sorry, your counter is expired.");
+							reply.setContent("0");
 							break;
 						}
 						
@@ -480,24 +487,24 @@ public class RetailerAgent extends Agent implements GUIListener{
 							
 							// accept if in range
 							if ( offer >= negoPrice ) {
-								System.out.println( agentName + " sends accept message");
-								printGUI(agentName + " sends accept message");
+								System.out.println( agentName + " sends accept message for " + offer);
+								printGUI(agentName + " accept the offer for " + offer);
 								reply.setPerformative(ACLMessage.AGREE);
-								reply.setContent("Thanks for your purchase.");
+								reply.setContent(String.valueOf(offer));
 							} else {
 								// send next round
-								negoTimeStart = System.currentTimeMillis() / 1000;
 								System.out.println( agentName + " sends counter offer for " + negoPrice);
-								printGUI(agentName + " sends counter offer for " + negoPrice + ", Time left " + (negoCounterOffer - negoCounter));
-								reply.setPerformative(ACLMessage.PROPOSE);
+								printGUI(agentName + " sends counter offer for <b>" + negoPrice + "</b>");
+								reply.setPerformative(ACLMessage.REQUEST);
 								reply.setContent(Double.toString(negoPrice));
+								negoTimeStart = System.currentTimeMillis() / 1000;
 							}
 							break;
 						} else {
 							System.out.println( agentName + " reject the counter offer");
 							printGUI( agentName + " reject the counter offer");
 							reply.setPerformative(ACLMessage.REFUSE);
-							reply.setContent("Sorry, your counter offer is limited.");
+							reply.setContent("0");
 						}
 						
 						break;
@@ -506,20 +513,20 @@ public class RetailerAgent extends Agent implements GUIListener{
 					case ACLMessage.ACCEPT_PROPOSAL:
 					case ACLMessage.AGREE:
 						// Timeout
-						System.out.println( agentName + " completed the negotiation for " + usageCharge);
-						printGUI( agentName + " completed the negotiation for " + usageCharge);
+						System.out.println( agentName + " completed for " + negoPrice);
+						printGUI( agentName + " completed for <b>" + negoPrice + "</b>");
 						// TODO: sign new contract
 						reply.setPerformative(ACLMessage.AGREE);
-						reply.setContent(Double.toString(usageCharge));
+						reply.setContent(Double.toString(negoPrice));
 						break;
 					
-					//Home agent accept the offer
+					//Home agent reject the offer
 					case ACLMessage.REJECT_PROPOSAL:
 					case ACLMessage.REFUSE:
-						System.out.println( agentName + " the negotiation was reject by " + senderName);
-						printGUI( agentName + " the negotiation was reject by " + senderName);
-						reply.setPerformative(ACLMessage.INFORM);
-						reply.setContent("sorry to hear that");
+						System.out.println( agentName + " was reject by " + senderName);
+						printGUI( agentName + " was reject by " + senderName);
+						reply.setPerformative(ACLMessage.REFUSE);
+						reply.setContent("0");
 						break;
 						
 					/* send total amount */
@@ -532,6 +539,10 @@ public class RetailerAgent extends Agent implements GUIListener{
 							reply.setPerformative(ACLMessage.INFORM_REF);
 							reply.setContent(Double.toString(currentUsage));
 						}catch ( NumberFormatException nfe) {
+							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+							reply.setContent("NOT UNDERSTOOD");
+							break;
+						}catch ( NullPointerException npe) {
 							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
 							reply.setContent("NOT UNDERSTOOD");
 							break;
