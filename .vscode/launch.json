@@ -4,6 +4,18 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+        
+        {
+            "type": "java",
+            "name": "CodeLens (Launch) - Main",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "Main",
+            "args": "",
+            "projectName": "EnergyTradingSystem"
+        },
         {
             "type": "java",
             "name": "Debug (Launch)",
@@ -302,13 +314,13 @@
         },
         {
             "type": "java",
-            "name": "Debug (Launch)-HomeAgent",
+            "name": "Debug (Launch)-RetailerAgents",
             "request": "launch",
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",
             "stopOnEntry": false,
             "mainClass": "jade.Boot",
-            "args": "-container -agents HomeAgent:EnergyAgents.HomeAgent;",
+            "args": "-container -agents RetailerAgent_1:EnergyAgents.RetailerAgent;RetailerAgent_2:EnergyAgents.RetailerAgent;RetailerAgent_3:EnergyAgents.RetailerAgent;",
             "projectName": "EnergyTradingSystem"
         },
         {
@@ -319,7 +331,18 @@
             "console": "internalConsole",
             "stopOnEntry": false,
             "mainClass": "jade.Boot",
-            "args": "-container -agents HomeReporterAgent:EnergyAgents.HomeReporterAgent;",
+            "args": "-container -agents HomeReporterAgent_1:EnergyAgents.HomeReporterAgent;HomeReporterAgent_2:EnergyAgents.HomeReporterAgent;HomeReporterAgent_3:EnergyAgents.HomeReporterAgent;",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-HomeAgent",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.Boot",
+            "args": "-container -agents HomeAgent:EnergyAgents.HomeAgent;",
             "projectName": "EnergyTradingSystem"
         },
         {

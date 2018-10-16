@@ -3,16 +3,23 @@ package EnergyAgents;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Vector;
 
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
+import jade.domain.FIPANames;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.FailureException;
+import jade.domain.FIPAAgentManagement.NotUnderstoodException;
+import jade.domain.FIPAAgentManagement.RefuseException;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import jade.proto.ContractNetInitiator;
+import jade.proto.ContractNetResponder;
 import database.DbHelper;
 import GUI.*;
 /**
@@ -35,6 +42,8 @@ public class RetailerAgent extends Agent implements GUIListener{
 	// charge is over the meter of the contract
 	private double overCharge;
 	
+	// current usage
+	private double currentUsage;
 	
 	// negotiation, price in cent per KWH, time in second
 	// negotiation price is calculated in every iteration offer
@@ -82,11 +91,12 @@ public class RetailerAgent extends Agent implements GUIListener{
 		agentName = "Retailer";
 		agentType = "Retailer";
 		
-		usageCharge = 25.0;
-		overCharge = usageCharge + (usageCharge * 0.15);	// plus 15%
+		currentUsage = 0;
+		usageCharge = getRandomDouble(20.0, 30.0);
+		overCharge = usageCharge + (usageCharge * 0.05);	// plus 5%
 		
 		negoPrice = usageCharge;
-		negoLimitPrice = negoPrice - (negoPrice * 0.10);	// eg. no more than 10%
+		negoLimitPrice = negoPrice - (negoPrice * 0.15);	// eg. no more than 15%
 		negoIterateReduceBy = 0.05; // reduce by 0.05 percent in each counter
 		
 		negoMechanism = Mechanism.GENERAL;
@@ -205,6 +215,18 @@ public class RetailerAgent extends Agent implements GUIListener{
 	
 	/* --- Negotiation --- */
 	/**
+	 * restart negotiation
+	 */
+	private void resetNegotiation() {
+		// reset negotiate
+		currentUsage = 0;
+		negoPrice = usageCharge;
+		negoCounter = 0;
+		negoTimeStart = System.currentTimeMillis() / 1000;
+	}
+	
+	
+	/**
 	 * perform counter offer
 	 * @param double offer price
 	 * @return double counter offer or 0
@@ -219,9 +241,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 		if ( negoCounter < negoCounterOffer ) {
 			switch (negoMechanism) {
 				case BY_TIME:
-					break;
 				case ON_DEMAND:
-					break;
 				default:
 					double reducePercentage = (negoCounter + 1) * negoIterateReduceBy;
 					nextOffer = usageCharge - (usageCharge * reducePercentage);
@@ -239,8 +259,8 @@ public class RetailerAgent extends Agent implements GUIListener{
 	 */
 	@Override
 	protected void setup() {
-		agentId = getAID().getLocalName();
-		agentName += "_" + agentId;
+		agentId = getAID().getName();
+		agentName = getAID().getLocalName();
 		System.out.println( agentName +" Started.");
 		
 		// Register the service
@@ -256,9 +276,16 @@ public class RetailerAgent extends Agent implements GUIListener{
 			fe.printStackTrace();
 		}
 		
+		// add contact net behaviour
+		 MessageTemplate template = MessageTemplate.and(
+		  		MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
+		  		MessageTemplate.MatchPerformative(ACLMessage.CFP) );
+		addBehaviour( new ServicesReponder(this, template));
+		
+		
 		// add behaviour to accept the offer
 		addBehaviour(new ServicesBehaviour());
-		
+				
 	}
 	
 	
@@ -280,8 +307,111 @@ public class RetailerAgent extends Agent implements GUIListener{
 	}
 	
 	
+		
+	
+	/**
+	 * ContractNet Behaviour
+	 */
+	private class ServicesReponder extends ContractNetResponder {
+
+		public ServicesReponder(Agent a, MessageTemplate mt) {
+			super(a, mt);
+			
+		}
+
+		/*
+		 * First step
+		 * send usage charge to home agent 
+		 */
+		@Override
+		protected ACLMessage prepareResponse(ACLMessage cfp) {
+			System.out.println(agentName + " start proposing " + String.valueOf(usageCharge) + " to " + cfp.getSender().getLocalName());
+			printGUI(agentName + " start proposing " + String.valueOf(usageCharge) + " to " + cfp.getSender().getLocalName());
+			// create propose
+			ACLMessage propose = cfp.createReply();
+			propose.setPerformative(ACLMessage.PROPOSE);
+			propose.setContent(String.valueOf(usageCharge));
+			
+			resetNegotiation();
+			
+			return propose;
+		}
+		
+		
+		
+
+		
+		/**
+		 * Handle the offer from home agent
+		 */
+		@Override
+		protected ACLMessage handleCfp(ACLMessage cfp) throws RefuseException, FailureException, NotUnderstoodException {
+			
+			System.out.println(agentName + " received " + cfp.getContent() + " from " + cfp.getSender().getLocalName() + " , acl : " + cfp.getPerformative());
+			
+			ACLMessage reply = cfp.createReply();
+			
+			switch ( cfp.getPerformative() ) {
+				
+				case ACLMessage.PROPOSE:
+					System.out.println("Agent "+getLocalName()+": send proposal ");
+					reply.setPerformative(ACLMessage.PROPOSE);
+					reply.setContent(String.valueOf(26));
+					return reply;
+					
+				// counter offer
+				case ACLMessage.QUERY_REF:
+					System.out.println("Agent "+getLocalName()+": query ref ");
+					reply.setPerformative(ACLMessage.PROPOSE);
+					reply.setContent(String.valueOf(27));
+					return reply;
+					
+				default:
+					return super.handleCfp(cfp);
+			}
+			
+			
+		}
+		
+		
+		
+		/**
+		 * when home agent accept
+		 */
+		@Override
+		protected ACLMessage handleAcceptProposal(ACLMessage cfp, ACLMessage propose, ACLMessage accept) {
+			System.out.println(accept.getSender().getLocalName() +" accepted the proposal");
+			printGUI(accept.getSender().getLocalName() +" accepted the proposal");
+			// say thank
+			ACLMessage inform = accept.createReply();
+			inform.setProtocol(accept.getProtocol());
+			inform.setContent("Thank you for your support from " + agentName);
+			inform.setPerformative(ACLMessage.INFORM);
+			return inform;
+		}
+
+		
+		/**
+		 * when home agent reject
+		 */
+		protected ACLMessage handleRejectProposal(ACLMessage reject) {
+			System.out.println(reject.getSender().getLocalName() +" reject the proposal");
+			printGUI(reject.getSender().getLocalName() +" rejected the proposal");
+			// say sorry
+			ACLMessage inform = reject.createReply();
+			inform.setProtocol(reject.getProtocol());
+			inform.setContent("Sorry, to hear that from " + agentName);
+			inform.setPerformative(ACLMessage.INFORM);
+			return inform;
+		}
+
+
+	}
+	// end contractNetBehaviour
+	
 	/* --- Jade Agent behaviour classes --- */
 	/**
+	 * Negotiation
 	 * waiting for any request from home agent
 	 * 
 	 */
@@ -298,7 +428,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 				// get sender AID
 				AID sender = msg.getSender();
 				String senderName = sender.getLocalName();
-				System.out.println( agentName + " receives message from " + sender);
+				System.out.println( agentName + " receives " + msg.getContent() + " from " + senderName);
 				
 				// get content
 				String content = msg.getContent();
@@ -310,12 +440,11 @@ public class RetailerAgent extends Agent implements GUIListener{
 				switch(msg.getPerformative()) {
 					// step 1: receive a request from home agent, then propose the negotiation price
 					case ACLMessage.REQUEST:
-					case ACLMessage.QUERY_REF:
-						// reset negotiate
-						negoPrice = usageCharge;
-						negoCounter = 0;
-						negoTimeStart = System.currentTimeMillis() / 1000;
-						System.out.println( agentName + " sends the first offer for " + negoPrice);
+						resetNegotiation();
+						printGUI("----- Start Negotiation -----");
+						System.out.println( agentName + " sends the first negotiation " + negoPrice);
+						printGUI(agentName + " sends the first negotiation for " + negoPrice);
+						
 						reply.setPerformative(ACLMessage.PROPOSE);
 						reply.setContent(Double.toString(negoPrice));
 						break;
@@ -336,6 +465,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 						long timeNow = System.currentTimeMillis() / 1000;
 						if ( timeNow - negoTimeStart > negoTimeWait ) {
 							System.out.println( agentName + " sends expire message");
+							printGUI( agentName + "sends expire message");
 							reply.setPerformative(ACLMessage.REFUSE);
 							reply.setContent("Sorry, your counter is expired.");
 							break;
@@ -351,45 +481,62 @@ public class RetailerAgent extends Agent implements GUIListener{
 							// accept if in range
 							if ( offer >= negoPrice ) {
 								System.out.println( agentName + " sends accept message");
+								printGUI(agentName + " sends accept message");
 								reply.setPerformative(ACLMessage.AGREE);
 								reply.setContent("Thanks for your purchase.");
 							} else {
 								// send next round
 								negoTimeStart = System.currentTimeMillis() / 1000;
 								System.out.println( agentName + " sends counter offer for " + negoPrice);
+								printGUI(agentName + " sends counter offer for " + negoPrice + ", Time left " + (negoCounterOffer - negoCounter));
 								reply.setPerformative(ACLMessage.PROPOSE);
 								reply.setContent(Double.toString(negoPrice));
 							}
 							break;
 						} else {
-							System.out.println( agentName + " sends reject counter message");
+							System.out.println( agentName + " reject the counter offer");
+							printGUI( agentName + " reject the counter offer");
 							reply.setPerformative(ACLMessage.REFUSE);
 							reply.setContent("Sorry, your counter offer is limited.");
 						}
 						
 						break;
 						
-					// step 3: receive the reception from home agent, whether accept, reject
+					// step 3: receive the reception from home agent, accept or agree
 					case ACLMessage.ACCEPT_PROPOSAL:
 					case ACLMessage.AGREE:
 						// Timeout
-						System.out.println( agentName + " thank for your support.");
+						System.out.println( agentName + " completed the negotiation for " + usageCharge);
+						printGUI( agentName + " completed the negotiation for " + usageCharge);
 						// TODO: sign new contract
 						reply.setPerformative(ACLMessage.AGREE);
 						reply.setContent(Double.toString(usageCharge));
 						break;
-						
+					
+					//Home agent accept the offer
 					case ACLMessage.REJECT_PROPOSAL:
 					case ACLMessage.REFUSE:
-						System.out.println( agentName + " sorry to hear that. ");
+						System.out.println( agentName + " the negotiation was reject by " + senderName);
+						printGUI( agentName + " the negotiation was reject by " + senderName);
 						reply.setPerformative(ACLMessage.INFORM);
 						reply.setContent("sorry to hear that");
 						break;
 						
+					/* send total amount */
+						// TODO: not complete
 					case ACLMessage.INFORM:
 						System.out.println( agentName + " received an inform from " + senderName);
-						reply.setPerformative(ACLMessage.REFUSE);
-						reply.setContent("Sorry, cannot buy any energy for now");
+						try {
+							double usage = Double.parseDouble(content);
+							currentUsage += usage;
+							reply.setPerformative(ACLMessage.INFORM_REF);
+							reply.setContent(Double.toString(currentUsage));
+						}catch ( NumberFormatException nfe) {
+							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+							reply.setContent("NOT UNDERSTOOD");
+							break;
+						}
+						
 						break;
 						
 					default:
@@ -406,7 +553,10 @@ public class RetailerAgent extends Agent implements GUIListener{
 				block();
 			}// end if msg
 		}// end action
+
+		
 	}// end ServicesBehaviour
+
 	
 	
 	/* ----- GUI ---- */
@@ -416,6 +566,12 @@ public class RetailerAgent extends Agent implements GUIListener{
 		gui.showGUI();
 	}
 	
+	private void printGUI(String text) {
+		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+		msg.addReceiver(new AID(PrintAgent.AGENT_NAME, AID.ISLOCALNAME ));
+		msg.setContent("<font color='red'>" + text + "</font>");
+		send(msg);
+	}
 	
 	@Override
 	public String toString() {
@@ -441,11 +597,19 @@ public class RetailerAgent extends Agent implements GUIListener{
 		return java.math.BigDecimal.valueOf(value).setScale(3, java.math.RoundingMode.HALF_UP).doubleValue();
 	}
 	
+	public double getRandomDouble(double min, double max){
+	    double d = (Math.random()*((max-min)+1))+min;
+	    return Math.round(d*100.0)/100.0;
+	}
+	
+	/* --- NOT USE --- */
+	
+	
 	
 	/**
-	 * *** Not used ***
 	 * Database for saving configuration
-	 */
+	 
+	
 	private void createTable() {
 		String tableName = "Retailler_tb";
 		
@@ -474,7 +638,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 			db.createTable(tableName, columns);
 		}
 	}
-	
+	*/
 	
 	
 	
