@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
-//import com.opencsv.*;
+import com.opencsv.*;
 
 import database.DbHelper;
 
@@ -320,7 +320,7 @@ public class ApplianceAgent extends Agent {
         return null;
 	}
 	
-	 // Method to de register the service (on take down)
+	// Method to de register the service (on take down)
     protected void takeDown() {
     	try { DFService.deregister(this); }
     	catch (Exception e) {}
@@ -338,7 +338,7 @@ public class ApplianceAgent extends Agent {
             if (msg!=null) {
             	// Print out message content
             	System.out.println(getLocalName()+ ": Received response " + msg.getContent() + " from " + msg.getSender().getLocalName());
-           }
+           	}
         
             // Block the behaviour from terminating and keep listening to the message
             block();
