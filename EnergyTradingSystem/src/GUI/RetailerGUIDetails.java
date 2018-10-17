@@ -36,7 +36,7 @@ import jade.core.Agent;
 /**
  * Retailer GUI
  * 
- * @author Tola
+ * @author Anh
  *
  */
 public class RetailerGUIDetails {

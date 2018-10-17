@@ -34,7 +34,7 @@ public class Main {
 		List<AgentController> retailerAgents = createRetailerAgents();
 		
 		try {
-			Thread.sleep(500);
+			Thread.sleep(300);
 		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -43,9 +43,17 @@ public class Main {
 		//start home agent
 		AgentController homeAgent = createHomeAgent();
 		
+		try {
+			Thread.sleep(300);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
 		// Create retailer Test agent
 		//createRetailerTest();
 		
+		List<AgentController> applianceAgents = createApplianceAgents();
 		
 		// Start Main GUI
 		EventQueue.invokeLater(new Runnable() {
@@ -55,6 +63,7 @@ public class Main {
 					
 					// attach the agents list
 					mainGUI.setRetailerAgents(retailerAgents);
+					mainGUI.setApplianceAgents(applianceAgents);
 					mainGUI.setHomeAgent(homeAgent);
 					mainGUI.setVisible(true);
 				} catch (Exception e) {
@@ -85,7 +94,22 @@ public class Main {
 		return retailerAgents;
 		
 	}
-	
+	private static List<AgentController> createApplianceAgents() {
+		System.out.println("Appliant Agents start");
+		
+		// create container
+		ContainerController applianceContainer = JadeController.createContainer("Appliance-Container");
+		
+		// create agents
+		List<AgentController> applianceAgents= new ArrayList<>();
+		applianceAgents.add( JadeController.createAgent("Solar", "EnergyAgents.ApplianceAgent", applianceContainer) );
+		applianceAgents.add( JadeController.createAgent("TV", "EnergyAgents.ApplianceAgent", applianceContainer) );
+		applianceAgents.add( JadeController.createAgent("PC", "EnergyAgents.ApplianceAgent", applianceContainer) );
+		applianceAgents.add( JadeController.createAgent("AirCon", "EnergyAgents.ApplianceAgent", applianceContainer) );
+		applianceAgents.add( JadeController.createAgent("Microwave", "EnergyAgents.ApplianceAgent", applianceContainer) );
+		
+		return applianceAgents;
+	}
 	
 	//Create Home Agent
 	private static AgentController createHomeAgent()

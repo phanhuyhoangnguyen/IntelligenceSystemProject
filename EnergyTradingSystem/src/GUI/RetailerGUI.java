@@ -1,6 +1,11 @@
 package GUI;
 
-
+/**
+ * Retailer GUI
+ * 
+ * @author Anh
+ *
+ */
 import java.awt.event.*;
 import java.util.List;
 import java.awt.*;
@@ -21,23 +26,11 @@ import jade.wrapper.StaleProxyException;
 public class RetailerGUI extends JFrame {
 
 	private List<AgentController> retailerAgents;
-	
-	
-	
 	private JTable table;
-	
-	
-	
-	public void applyRetailersAgent()
-	{
-		
-	}
-	
+
 	public RetailerGUI(List<AgentController> retailerAgents)
 	{
-		
 		this.retailerAgents = retailerAgents;
-		
 		setTitle("Retailers Interface");
 		setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 		setLocationRelativeTo(null);
