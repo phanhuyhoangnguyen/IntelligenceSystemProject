@@ -90,6 +90,7 @@ public class JadeController {
 	/**
 	 *  Boot Jade GUI
 	 *  running in the local host port 1099
+	 *  cmd: jade.Boot -gui
 	 */
 	private void jadeBoot() {
 		
@@ -150,6 +151,7 @@ public class JadeController {
 	 * Create container
 	 * @param String container name
 	 * @return AgentContainer
+	 * cmd: jade.Boot -container
 	 */
 	public static ContainerController createContainer( String containerName) {
 		ContainerController container = null;
@@ -166,6 +168,7 @@ public class JadeController {
 	 * Create an agent
 	 * @param String agent name, String classname, container
 	 * @return Agent Controller AID if success
+	 * cmd: jade.Boot -agents agentAlias:AgentClassName()
 	 */
 	public static AgentController createAgent( String agentAlias, String agentClassName, ContainerController container ) {
 		if ( jadeController == null ) {
@@ -194,7 +197,22 @@ public class JadeController {
 		return null;
 	}
 	
-	
+	/**
+	 * Create an agent
+	 * @param String agent name, String classname, container
+	 * @return Agent Controller AID if success
+	 * cmd: jade.Boot -agents agentAlias:AgentClassName("arg1","arg2")
+	 */
+	public static AgentController createAgent( String agentAlias, String agentClassName, ContainerController container, Object[] args ) {
+		AgentController agentCtrl = null;
+		if ( args == null ) {
+			agentCtrl = createAgent( agentAlias, agentClassName, container );
+		} else {
+			agentCtrl = createAgent( agentAlias, agentClassName, container, args );
+		}
+		
+		return agentCtrl;
+	}
 	
 	/**
 	 * Get list of agents' names
@@ -248,6 +266,7 @@ public class JadeController {
 	 * delete and kill an agent
 	 * @param AID Jade agent identification
 	 */
+	//TODO: Anh implement it, due date: 12/10/2018
 	
 	/**
 	 * stop an agent
