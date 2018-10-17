@@ -314,24 +314,13 @@
         },
         {
             "type": "java",
-            "name": "Debug (Launch)-RetailerAgents",
+            "name": "Debug (Launch)-RetailerAgent",
             "request": "launch",
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",
             "stopOnEntry": false,
             "mainClass": "jade.Boot",
-            "args": "-container -agents RetailerAgent_1:EnergyAgents.RetailerAgent;RetailerAgent_2:EnergyAgents.RetailerAgent;RetailerAgent_3:EnergyAgents.RetailerAgent;",
-            "projectName": "EnergyTradingSystem"
-        },
-        {
-            "type": "java",
-            "name": "Debug (Launch)-HomeReporterAgent",
-            "request": "launch",
-            "cwd": "${workspaceFolder}",
-            "console": "internalConsole",
-            "stopOnEntry": false,
-            "mainClass": "jade.Boot",
-            "args": "-container -agents HomeReporterAgent_1:EnergyAgents.HomeReporterAgent;HomeReporterAgent_2:EnergyAgents.HomeReporterAgent;HomeReporterAgent_3:EnergyAgents.HomeReporterAgent;",
+            "args": "-container -agents Retailer1:EnergyAgents.RetailerAgent;Retailer2:EnergyAgents.RetailerAgent;Retailer3:EnergyAgents.RetailerAgent;",
             "projectName": "EnergyTradingSystem"
         },
         {
@@ -343,6 +332,17 @@
             "stopOnEntry": false,
             "mainClass": "jade.Boot",
             "args": "-container -agents HomeAgent:EnergyAgents.HomeAgent;",
+            "projectName": "EnergyTradingSystem"
+        },
+        {
+            "type": "java",
+            "name": "Debug (Launch)-ApplianceAgent",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "stopOnEntry": false,
+            "mainClass": "jade.Boot",
+            "args": "-container -agents Appliance1:EnergyAgents.ApplianceAgent('Appliance','Appliance1');Appliance2:EnergyAgents.ApplianceAgent('Appliance','Appliance2');Appliance3:EnergyAgents.ApplianceAgent('Appliance','Appliance3');",
             "projectName": "EnergyTradingSystem"
         },
         {
