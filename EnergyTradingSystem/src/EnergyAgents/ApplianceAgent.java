@@ -47,7 +47,7 @@ public class ApplianceAgent extends Agent {
 	private String serviceType;
 	
 	// For Message Communication to HomeAgent
-	private static final int UPATE_DURATION = 10000;				// 10s -> specify the frequency of message sent to Home Agent. 
+	private static final int UPATE_DURATION = 15000;				// 10s -> specify the frequency of message sent to Home Agent. 
 																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
 	// For energyUsage Stimulation
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
@@ -99,7 +99,7 @@ public class ApplianceAgent extends Agent {
 	            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
 	    	        
 	    	        // Register state Reporting Actual Usage
-	            	communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+	            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
 	    	        
 	    	        addBehaviour(communicationSequence);
 
@@ -122,7 +122,7 @@ public class ApplianceAgent extends Agent {
 	// This behaviour perform service register 
     private class registerService extends OneShotBehaviour {
     	public void action() {
-    		 // Create Service Description to be registered from the arguments
+			// Create Service Description to be registered from the arguments
 	        ServiceDescription sd  = new ServiceDescription();
 	        sd.setType(getServiceType());
 	        sd.setName(getApplianceName());
@@ -143,8 +143,14 @@ public class ApplianceAgent extends Agent {
     // This behaviour search for home agent
     private class reportingEnergyUsagePrediction extends OneShotBehaviour {
     	public void action() {
-    		String predictionUsage = predictUsage();
-        	
+			String predictionUsage;
+			
+			// TODO @Dave: this one returns null value
+    		// predictionUsage = predictUsage();
+			
+			// * @Dave: set a dummy value, delete after fixing the above
+			predictionUsage = "50";
+			
         	// Send request to HomeAgent
             sendRequestBuyingEnergyToHome(predictionUsage); 
     	}
@@ -191,7 +197,7 @@ public class ApplianceAgent extends Agent {
 	    // send message
 	    send(msg);
     }
-	
+	// TODO check this
 	private void sendRequestBuyingEnergyToHome(String predictionUsage) {
 		ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
     	msg.addReceiver(getHomeAgent());								// this.homeAgent
@@ -201,24 +207,25 @@ public class ApplianceAgent extends Agent {
     	// Specify the reply deadline (10 seconds)
     	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
         
-    	// Set message content
-    	msg.setContent("Prediction Usage: " + predictionUsage);
+		// Set message content
+		// TODO @Dave: Only send the string of a number 
+    	msg.setContent(predictionUsage);
 
     	// Define the AchieveREInitiator behaviour with the message
     	addBehaviour(new AchieveREInitiator(this, msg) {
     		// Method to handle an agree message from responder
     		protected void handleAgree(ACLMessage agree) {
-    			System.out.println(getLocalName() + ": " + agree.getSender().getName() + " has agreed to the request");
+    			System.out.println(getLocalName() + ": " + agree.getSender().getLocalName() + " has agreed to the request");
     		}
     
     		// Method to handle an inform message from Home Agent after its negotiation with Retailer is success
 	        protected void handleInform(ACLMessage inform) {
-	        	System.out.println(getLocalName() + ": " + inform.getSender().getName() + " negotiate successful. Appliance's request is fulfiled");
+	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + " negotiate successful. Appliance's request is fulfiled");
 	        }
 	
 	        // Method to handle a refuse message from responder
 	        protected void handleRefuse(ACLMessage refuse) {
-	        	System.out.println(getLocalName() + ": " + refuse.getSender().getName() + " negotiate failed. Appliance's request is not met");
+	        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " negotiate failed. Appliance's request is not met");
 	        }
 	
 	        // Method to handle a failure message (failure in delivering the message)
@@ -227,7 +234,7 @@ public class ApplianceAgent extends Agent {
 	        		// FAILURE notification from the JADE runtime -> the receiver does not exist
 	        		System.out.println(getLocalName() + ": " + getHomeAgent() +" does not exist");
 	        	} else {
-	                System.out.println(getLocalName() + ": " + failure.getSender().getName() + " failed to perform the requested action");
+	                System.out.println(getLocalName() + ": " + failure.getSender().getLocalName() + " failed to perform the requested action");
 	        	}
 	        }
 	            
