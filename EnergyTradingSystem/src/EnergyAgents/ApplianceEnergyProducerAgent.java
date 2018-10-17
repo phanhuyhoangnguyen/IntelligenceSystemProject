@@ -12,7 +12,7 @@ import jade.core.Agent;
 public class ApplianceEnergyProducerAgent extends ApplianceAgent implements EnergyGenerator {
 	
 	protected void setup(String applicantID, double energyDefaultUsage, double energyDefaultProduction) {	// these data is taken from database and passed in from parameters
-		setApplicantID(applicantID);
+		setApplianceName(applicantID);
 	}
 	
 	public String estimateElectricity() {
