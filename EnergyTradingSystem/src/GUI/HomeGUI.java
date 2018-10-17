@@ -1,5 +1,10 @@
 package GUI;
-
+/**
+ * Retailer GUI
+ * 
+ * @author Anh
+ *
+ */
 
 import java.awt.BorderLayout;
 import java.awt.Component;

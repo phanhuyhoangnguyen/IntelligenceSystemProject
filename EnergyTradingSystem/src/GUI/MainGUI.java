@@ -1,5 +1,10 @@
 package GUI;
-
+/**
+ * Retailer GUI
+ * 
+ * @author Anh
+ *
+ */
 import java.awt.EventQueue;
 import java.awt.Font;
 import java.awt.event.MouseAdapter;
@@ -16,7 +21,7 @@ import javax.swing.GroupLayout.Alignment;
 import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.border.EmptyBorder;
 
-import EnergyAgentGUI.views.HomeGUI;
+
 import EnergyAgents.JadeController;
 import jade.wrapper.AgentController;
 
@@ -164,8 +169,19 @@ public class MainGUI extends JFrame {
 						break;
 						
 					case "appliance":
-						System.out.println("Appliance click");
+						if ( applianceAgents != null ) {
+							EventQueue.invokeLater(new Runnable() {
+								public void run() {
+									try {
+										AppliantsGUI gui = new AppliantsGUI(applianceAgents);
+										gui.setVisible(true);
+									} catch (Exception e) {
+										e.printStackTrace();
+									}
+								}
+							});
 						break;
+						}
 						
 					case "retailer":
 						if ( retailerAgents != null ) {
