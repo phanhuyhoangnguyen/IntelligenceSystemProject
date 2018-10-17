@@ -199,7 +199,7 @@ public class ApplianceAgent extends Agent {
     }
 	// TODO check this
 	private void sendRequestBuyingEnergyToHome(String predictionUsage) {
-		ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
     	msg.addReceiver(getHomeAgent());								// this.homeAgent
         // Set the interaction protocol
     	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);

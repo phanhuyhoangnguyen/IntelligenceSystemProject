@@ -342,7 +342,7 @@
             "console": "internalConsole",
             "stopOnEntry": false,
             "mainClass": "jade.Boot",
-            "args": "-container -agents Appliance1:EnergyAgents.ApplianceAgent('Appliance','Appliance1');Appliance2:EnergyAgents.ApplianceAgent('Appliance','Appliance2');Appliance3:EnergyAgents.ApplianceAgent('Appliance','Appliance3');",
+            "args": "-container -agents ClothWasher:EnergyAgents.ApplianceAgent('Appliance','CWE');Dishwasher:EnergyAgents.ApplianceAgent('Appliance','DWE');ForceAirEnergy:EnergyAgents.ApplianceAgent('Appliance','FRE');",
             "projectName": "EnergyTradingSystem"
         },
         {

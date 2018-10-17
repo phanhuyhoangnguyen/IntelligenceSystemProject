@@ -136,7 +136,6 @@ public class HomeAgent extends Agent implements GUIListener
 
 
         //Communicate with the retailer agents
-        
         CommunicateWithRetailer(retailerSequenceBehaviour);
         homeSequenceBehaviour.addSubBehaviour(retailerSequenceBehaviour);
         
@@ -148,18 +147,20 @@ public class HomeAgent extends Agent implements GUIListener
     private void CommunicateWithAppliance(SequentialBehaviour homeBehaviour)
     {
         //Message template to listen only for messages matching te correct interaction protocol and performative
-        MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
+        MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.INFORM));
 
         //Add the AchieveREresponder behaviour which implements the reponder role in a FIPA_REQUEST interaction protocol
         //The responder can either choose to agree to request or refuse request
         homeBehaviour.addSubBehaviour(new AchieveREResponder(this, template){
             protected ACLMessage prepareResponse(ACLMessage request) throws NotUnderstoodException, RefuseException {
 
-                System.out.println("**** GET TOTAL DEMAND **** ");
+                System.out.println(" **** GET TOTAL DEMAND **** ");
 
 				System.out.println(getLocalName() + ": REQUEST received from "
-						+ request.getSender().getLocalName() + ".\nThe demand is " + request.getContent()+ "");
+                        + request.getSender().getLocalName() + ".\nThe demand is " + request.getContent()+ "");
+                        
                 totalEnergyConsumption += Double.parseDouble(request.getContent());
+
                 System.out.println("Total Demand: " + totalEnergyConsumption +"\n");
 				// Method to determine how to respond to request
 				if (isNewReport) {
@@ -172,13 +173,15 @@ public class HomeAgent extends Agent implements GUIListener
                     
                     isNewReport = false;
                     startNegotiation = true;
-
+                    homeBehaviour.removeSubBehaviour(this);
 					return agree;
 				} else {
 					// Agent refuses to perform the action and responds with a REFUSE
 					System.out.println("Agent " + getLocalName() + ": Refuse");
 					throw new RefuseException("check-failed");
-				}
+                }
+                
+
 			}
             
 			// If the agent agreed to the request received, then it has to perform the associated action and return the result of the action
@@ -201,7 +204,7 @@ public class HomeAgent extends Agent implements GUIListener
 		});
         
     }
-
+    
     /***
      * Communicate with Retailer Agent
      * @param retailerSeQue add sequence behaviour
@@ -492,31 +495,7 @@ public class HomeAgent extends Agent implements GUIListener
 
 
     /* --- Jade Agent behaviour classes --- */
-    /**
-     * Receive demand from Appliances
-     */
-    private class ReceiveDemandBehaviour extends CyclicBehaviour{
-        public void action(){
-            System.out.println(getLocalName() + ": waiting for demand from Applicant Agents");
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-            ACLMessage msg = receive(mt);
-            if(msg!= null){
-                String demand, receiver, sender;
-                
-                demand = msg.getContent();
-                receiver = getLocalName();
-                sender = msg.getSender().getLocalName();
-
-                //Print message content
-                System.out.println(receiver + ": received response " + demand + " from " + sender);
-                totalEnergyConsumption += Float.parseFloat(demand);
-                System.out.println("Total consumption: " + totalEnergyConsumption);
-                System.out.println("**********************************************");
-            }
-            //Continue listening
-            block();
-        }
-    }
+    
 
     //Declare ReiverBehaviour - this behaviour controls the characteristic of behaviour as well as it life time
     private class MyReceiverBehaviour extends SimpleBehaviour

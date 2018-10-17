@@ -102,11 +102,11 @@ public class Main {
 		
 		// create agents
 		List<AgentController> applianceAgents= new ArrayList<>();
-		applianceAgents.add( JadeController.createAgent("Solar", "EnergyAgents.ApplianceAgent", applianceContainer) );
-		applianceAgents.add( JadeController.createAgent("TV", "EnergyAgents.ApplianceAgent", applianceContainer) );
-		applianceAgents.add( JadeController.createAgent("PC", "EnergyAgents.ApplianceAgent", applianceContainer) );
-		applianceAgents.add( JadeController.createAgent("AirCon", "EnergyAgents.ApplianceAgent", applianceContainer) );
-		applianceAgents.add( JadeController.createAgent("Microwave", "EnergyAgents.ApplianceAgent", applianceContainer) );
+		applianceAgents.add( JadeController.createAgent("Cloth washer", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","CWE"}) );
+		applianceAgents.add( JadeController.createAgent("Dishwasher", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","DWE"}) );
+		applianceAgents.add( JadeController.createAgent("Force Air Energy", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","FRE"}) );
+		applianceAgents.add( JadeController.createAgent("Fridge Energy", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","FGE"}) );
+		applianceAgents.add( JadeController.createAgent("Ultility Energy", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","UTE"}) );
 		
 		return applianceAgents;
 	}
