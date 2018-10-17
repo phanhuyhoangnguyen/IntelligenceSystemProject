@@ -131,7 +131,7 @@ public class RetailerGUIDetails {
 			inputPane.add(txtWaitTime);
 			
 			
-			
+			/*
 			JLabel l6 = new JLabel("Mechanism :", SwingConstants.RIGHT);
 			l6.setPreferredSize(l6.getPreferredSize());
 			inputPane.add(l6);
@@ -147,6 +147,7 @@ public class RetailerGUIDetails {
 					break;
 				}
 			}
+			*/
 			
 			// button group
 			JPanel buttonPane = new JPanel();
@@ -168,8 +169,8 @@ public class RetailerGUIDetails {
 						myAgent.setNegotiationCounterOffer(Integer.parseInt(txtCounterOffer.getText()));
 						myAgent.setNegotiationTimeWait(Long.parseLong(txtWaitTime.getText()));
 						
-						RetailerAgent.Mechanism mechanism = RetailerAgent.Mechanism.valueOf(cbMechanism.getSelectedItem().toString());
-						myAgent.setNegotiationMechanism(mechanism);
+						//RetailerAgent.Mechanism mechanism = RetailerAgent.Mechanism.valueOf(cbMechanism.getSelectedItem().toString());
+						//myAgent.setNegotiationMechanism(mechanism);
 						
 						
 						// test

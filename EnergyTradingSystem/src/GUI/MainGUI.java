@@ -17,6 +17,7 @@ import javax.swing.LayoutStyle.ComponentPlacement;
 import javax.swing.border.EmptyBorder;
 
 import EnergyAgentGUI.views.HomeGUI;
+import EnergyAgents.JadeController;
 import jade.wrapper.AgentController;
 
 public class MainGUI extends JFrame {
@@ -156,7 +157,9 @@ public class MainGUI extends JFrame {
 				
 				switch(lbl.getText().toLowerCase()){
 					case "home":
-						
+						if ( homeAgent != null) {
+							JadeController.showAgentGUI(homeAgent);
+						}
 						System.out.println("Home click");
 						break;
 						

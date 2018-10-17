@@ -12,6 +12,10 @@ import jade.domain.FIPAException;
 
 import java.util.*;
 
+import GUI.GUIListener;
+import GUI.HomeGUI;
+import GUI.RetailerGUIDetails;
+
 
 
 /**
@@ -21,7 +25,7 @@ import java.util.*;
  * @Description This agent will calculate the demand/ supplys, negotiate with Retailer agent and decide to choose the right offers.
  */
 
-public class HomeAgent extends Agent
+public class HomeAgent extends Agent implements GUIListener
 {
     /*Variables for agents (Dynamic)*/
     // Agent Identification
@@ -53,7 +57,7 @@ public class HomeAgent extends Agent
     {
         this.totalEnergyConsumption = 200;
         this.duration = 1;
-        this.budgetLimit = 100;
+        this.budgetLimit = Math.round(Math.random()*51) + 20;	// from 20 - 50
 
         agentName = "Home";
         agentType = "Home";
@@ -86,6 +90,9 @@ public class HomeAgent extends Agent
     public HomeAgent()
     {
         init();
+        
+     // Register the interface that must be accessible by an external program through the O2A interface
+     registerO2AInterface(GUIListener.class, this);
     }
 
     /* --- Jade functions --- */
@@ -104,9 +111,10 @@ public class HomeAgent extends Agent
         register(sd);
         
         //initialize message and template
-        message = newMessage(ACLMessage.QUERY_REF);
-        MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(message.getConversationId() ));
-
+        message = newMessage(ACLMessage.CFP);	// Tola: change to CFP
+        //MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(message.getConversationId() ));
+        MessageTemplate template = MessageTemplate.MatchAll();
+        
         //Add behaviours
         //addBehaviour(new ReceiveDemand());
         //addBehaviour(new TestBehaviour());
@@ -120,71 +128,154 @@ public class HomeAgent extends Agent
         seq.addSubBehaviour(par);
 
         //Get all retailer agents
-        //AID[] aids = getRetailerAgents("Retailer");
-        AID[] aids = getRetailerAgents("Test");
+        AID[] aids = getRetailerAgents("Retailer");
+        //AID[] aids = getRetailerAgents("Test");
         
         System.out.println("Retailer agents total number:" + aids.length);
         //Get offer from retailer agents
         for( AID aid : aids){
             message.addReceiver(aid);
+            // Tola: print added agent
+            printGUI(getLocalName() + " add <font color='red'>" + aid.getLocalName() + "</font>");
+            
             // Got 5s to get the receiver the offers before timeout
             par.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template){
                 public void handle(ACLMessage message)
                 {
                     if(message!=null){
-                        int offer = Integer.parseInt(message.getContent());
-                        System.out.println("Received offer $" + offer + " from " + message.getSender().getLocalName());
-                        //Compare with budgetLimit
-                        if(offer < bestPrice){
-                            bestPrice = offer;// set new better limit
-                            bestOffer = message;
-                        }
+                    	// Tola: add try catche, change to double
+                    	try {
+                    		double offer = Double.parseDouble(message.getContent());
+                    		
+                    		System.out.println(myAgent.getLocalName() + " received offer $" + offer + " from " + message.getSender().getLocalName());
+                    		printGUI(myAgent.getLocalName() + " received offer <b>" + offer + "</b> from " + message.getSender().getLocalName());
+                            
+                    		//Compare with budgetLimit
+                            if(offer < bestPrice){
+                                bestPrice = offer;// set new better limit
+                                bestOffer = message;
+                            }
+                    	}catch(NumberFormatException nfe) {
+                    		// nfe.printStackTrace();
+                    		System.out.println("There is no offer");
+                    	}
                     }
                 }
             });
         }
-
+        
         //Handle request 
-        // Delay 3s before sending the request
-        seq.addSubBehaviour( new DelayBehaviour(this, rand.nextInt(3000)){
+        // Delay 2s before sending the request
+        seq.addSubBehaviour( new DelayBehaviour(this, rand.nextInt(2000)){
             public void handleElapsedTimeout()
             {
                 if(bestOffer == null){
                     System.out.println("No offers.");
                 }
                 else{
-                    System.out.println("\nBest Price $" + bestPrice + " from " + bestOffer.getSender().getLocalName());
+                    System.out.println("Best Price $" + bestPrice + " from " + bestOffer.getSender().getLocalName());
 
-                    System.out.println(idealBudgetLimit);
+                    System.out.println(getLocalName() + "'s ideal budget is " + idealBudgetLimit);
 
                     ACLMessage reply = bestOffer.createReply();
                     if( bestPrice > idealBudgetLimit){//negotiate the new price
+                    	
                         reply.setPerformative(ACLMessage.REQUEST);
                         
-                        negoBestPrice = bestPrice * 0.9;
+                        negoBestPrice = truncatedDouble( bestPrice * 0.9 );
 
-                        reply.setContent("" + negoBestPrice);
-                        System.out.println(" Negotiation: Asking for price at $"+ reply.getContent());
+                        reply.setContent(String.valueOf(negoBestPrice));
+                        
+                        printGUI("<font color='gray'>---- Start Negotiation -----</font>");
+                        printGUI("<font color='gray' size='-1'>Step 1:</font>");
+                        System.out.println("Negotiation: Asking for price at $"+ reply.getContent());
+                        printGUI(getLocalName() + " received an offer <b>" + bestPrice + "</b> from <font color='red'>" + bestOffer.getSender().getLocalName() + "</font>");
+                        printGUI(getLocalName() + " sends a new offer <b>" + negoBestPrice + "</b>");
                         send(reply);
                     }
                     else{//Accept current offer
-                        reply.setPerformative(ACLMessage.REQUEST);
+                    	negoBestPrice = bestPrice;
+                        reply.setPerformative(ACLMessage.AGREE);
                         reply.setContent(""+bestPrice);
                         System.out.println("Accept Current Offer: $"+ reply.getContent());
+                        // Tola: print gui
+                        printGUI(getLocalName() + " accepted the offer <b>" + bestPrice +"</b> from <font color='red'>" + bestOffer.getSender().getLocalName() + "</font>");
                         send(reply);                        
                     }
                 }
             }
         });
+        
+        
+        //Tola : handle the counter offer
+        MyReceiverBehaviour counterOfferBehaviour = new MyReceiverBehaviour( this, 3000, null ) {
+			public void handle( ACLMessage message) {
+				if( bestPrice <= idealBudgetLimit) {
+					// no need to re-negotiate
+					return;
+				}
+				if (message != null ) {
+					// counter offer
+					if ( message.getPerformative() == ACLMessage.REQUEST) {
+						ACLMessage reply = bestOffer.createReply();
+	                    if( bestPrice > idealBudgetLimit){//negotiate the new price
+	                        reply.setPerformative(ACLMessage.REQUEST);
+	                        try {
+	                        	double offer = Double.parseDouble(bestOffer.getContent());
+	                        	negoBestPrice =  (offer * getRandomDouble(0.5, 0.10))/100;	// negotiation 5% off
+	                        	negoBestPrice = truncatedDouble( negoBestPrice );
+	                        }catch( NumberFormatException nfe) {
+	                        	return;
+	                        }
+	                    
+	                        reply.setContent(String.valueOf(negoBestPrice));
+	                        
+	                        System.out.println("Second Negotiation: Asking for price at $"+ reply.getContent());
+	                        printGUI("<font color='gray' size='-1'>Step 2:</font>");
+	                        printGUI(getLocalName() + " sends the second offer <b>" + negoBestPrice + "</b>");
+	                        send(reply);
+	                    }
+	                    else{//Accept current offer
+	                    	negoBestPrice = bestPrice;
+	                        reply.setPerformative(ACLMessage.AGREE);
+	                        reply.setContent(""+bestPrice);
+	                        System.out.println("Accept the second offer: $"+ reply.getContent());
+	                        // Tola: print gui
+	                        printGUI(getLocalName() + " accepted the second offer");
+	                        send(reply);                        
+	                    }
+
+						try {
+							double offer = Double.parseDouble(message.getContent());
+						}catch ( NumberFormatException nfe) {
+							return;
+						}
+						
+					// retailer agree
+					} else if ( message.getPerformative() == ACLMessage.AGREE) {
+						System.out.println("The Second Propsal Accepted");
+						System.out.println("The Second Proposal Offer: $"+ negoBestPrice);
+                        printGUI(getLocalName() + " accepted the second offer for " + negoBestPrice);
+						System.out.println("  --------- Finished ---------\n");
+						printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
+						
+					// retailer refuse
+					} else if ( message.getPerformative() == ACLMessage.REFUSE) {
+						System.out.println("The Second Propsal Refused");
+                        System.out.println("The Second Offer: $"+bestPrice);
+                        printGUI(getLocalName() + " reject the second offer for " + negoBestPrice);
+						System.out.println("  --------- Finished ---------\n");
+						printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
+					}
+				}
+			}
+		}; // end counter behaviour
+		seq.addSubBehaviour(counterOfferBehaviour);
 
         //Get decision from retailers
-        // have 1s before timeout
-        seq.addSubBehaviour( new MyReceiverBehaviour( this, 1000,
-                MessageTemplate.and( 
-                    MessageTemplate.MatchConversationId( message.getConversationId()) ,
-                        MessageTemplate.or( 
-                            MessageTemplate.MatchPerformative( ACLMessage.AGREE ),
-                            MessageTemplate.MatchPerformative( ACLMessage.REFUSE ))) ) 
+        // have 3s before timeout
+        seq.addSubBehaviour( new MyReceiverBehaviour( this, 3000,
+                null) 
 				{
 					public void handle( ACLMessage message) 
 					{  
@@ -196,18 +287,18 @@ public class HomeAgent extends Agent
 							if( message.getPerformative() == ACLMessage.AGREE){
                                 System.out.println("Proposal Accepted");
                                 System.out.println("Proposal Offer: $"+ negoBestPrice);
-                                System.out.println("  --------- Finished ---------\n");
+                                printGUI(getLocalName() + " accepted the offer for " + negoBestPrice);
                             }
 							else{//Refuse the proposal
                                 System.out.println("Propsal Refused");
                                 System.out.println("Original Offer: $"+bestPrice);
-                                System.out.println("  --------- Finished ---------\n");
+                                printGUI(getLocalName() + " reject the offer for " + negoBestPrice);
                             }
-								
+							System.out.println("  --------- Finished ---------\n");
+							printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
 						} 
 						else {
-							System.out.println("==" + getLocalName() 
-								+" timed out");
+							//System.out.println("==" + getLocalName() +" timed out");
 							//setup();//loop ultil get the order
 						}
 					}	
@@ -456,7 +547,21 @@ public class HomeAgent extends Agent
     }
 
     /* --- GUI --- */
-    //TODO: Add GUI
+    // Tola : add GUI
+    @Override
+	public void showGUI() {
+		HomeGUI gui = new HomeGUI(this);
+		gui.showGUI();
+	}
+	
+    
+	private void printGUI(String text) {
+		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+		msg.addReceiver(new AID(PrintAgent.AGENT_NAME, AID.ISLOCALNAME ));
+		msg.setContent("<font color='blue'>" + text + "</font>");
+		send(msg);
+	}
+    
 
     /* --- Utility methods --- */
     protected static int cidCnt = 0;
@@ -500,4 +605,14 @@ public class HomeAgent extends Agent
         message.setConversationId(generateCID());
         return message;
     }
+    
+    public double getRandomDouble(double min, double max){
+	    double d = (Math.random()*((max-min)+1))+min;
+	    return Math.round(d*100.0)/100.0;
+	}
+    
+    private double truncatedDouble(double value) {
+		return java.math.BigDecimal.valueOf(value).setScale(3, java.math.RoundingMode.HALF_UP).doubleValue();
+	}
+    
 }

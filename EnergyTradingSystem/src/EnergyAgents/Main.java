@@ -33,11 +33,18 @@ public class Main {
 		// Create retailer agents
 		List<AgentController> retailerAgents = createRetailerAgents();
 		
+		try {
+			Thread.sleep(500);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
 		//start home agent
-		createHomeAgent();
+		AgentController homeAgent = createHomeAgent();
 		
 		// Create retailer Test agent
-		createRetailerTest();
+		//createRetailerTest();
 		
 		
 		// Start Main GUI
@@ -48,7 +55,7 @@ public class Main {
 					
 					// attach the agents list
 					mainGUI.setRetailerAgents(retailerAgents);
-					
+					mainGUI.setHomeAgent(homeAgent);
 					mainGUI.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -81,7 +88,7 @@ public class Main {
 	
 	
 	//Create Home Agent
-	private static void createHomeAgent()
+	private static AgentController createHomeAgent()
 	{
 			System.out.println("Home Agent is starting");
 
@@ -89,8 +96,8 @@ public class Main {
 			ContainerController homeContainer = JadeController.createContainer("Home-Container");
 
 			AgentController homeAgent = JadeController.createAgent("Home Agent", "EnergyAgents.HomeAgent", homeContainer);
-			//TODO: Link with the GUI
-			//JadeController.showAgentGUI(homeAgent);
+			
+			return homeAgent;
 	}
 	
 	
