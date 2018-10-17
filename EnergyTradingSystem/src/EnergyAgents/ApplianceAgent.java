@@ -62,6 +62,7 @@ public class ApplianceAgent extends Agent {
 	// For Home Agent
 	private AID homeAgent;
 	private static final String HomeAgentService = "Home";
+	private boolean isDone = false;
 	
 	// For FSM
 	// State names
@@ -72,7 +73,6 @@ public class ApplianceAgent extends Agent {
 		
 		// this is set for skipping the first row in CSV file below
 		this.actualLivedSeconds = 1000;				//TODO: check if this should be changed to startTime and endTime
-		
 		intializeAppliantDictionary();
 	}
 
@@ -92,17 +92,17 @@ public class ApplianceAgent extends Agent {
 	        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
 	    
 	            protected void onTick() {
-	            	
-	            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
-
-	    	        // Register state Predicting and Request to buy
-	            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
-	    	        
-	    	        // Register state Reporting Actual Usage
-	            	communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
-	    	        
-	    	        addBehaviour(communicationSequence);
-
+	            	if (!isDone) {
+		            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
+		    	        isDone = true;
+		    	        // Register state Predicting and Request to buy
+		            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+		    	        
+		    	        // Register state Reporting Actual Usage
+		            	communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+		    	        
+		    	        addBehaviour(communicationSequence);
+	            	}
 	            }
 	        };
 	        
@@ -234,6 +234,7 @@ public class ApplianceAgent extends Agent {
 	        // Method that is invoked when notifications have been received from all responders
 	        protected void handleAllResultNotifications(Vector notifications) {
 	        	System.out.println(getLocalName() + ": " + " the request is completed!");
+	        	isDone = false;
 	        }
 	    });
 	}
