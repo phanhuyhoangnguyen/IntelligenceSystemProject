@@ -31,7 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
-import com.opencsv.*;
+import com.opencsv.CSVReader;
+import com.opencsv.CSVReaderBuilder;
 
 import database.DbHelper;
 
@@ -239,9 +240,10 @@ public class ApplianceAgent extends Agent {
 	
 	protected String predictUsage() {
 		int dataIndex = applicantDict.get(this.applianceName.toUpperCase());
-		final int TIME_INDEX = 1;
 		
-    	File directory = new File(pathToCSV);
+		String predictUsage;
+
+        double average = 0;
  	   
 		File file = new File(pathToCSV);
 		if(file.exists()) {
@@ -256,27 +258,27 @@ public class ApplianceAgent extends Agent {
 		        String[] nextRecord;
 		        
 		        // Each row is for 30 min -> if timeDuration is 30 mins then 1 rows will be read
-		        int noOFRowsToRead = LIVED_DAYS * secondsInADay;
+		         int noOfRowsToRead = LIVED_DAYS * secondsInADay;
+		        //int noOfRowsToRead = 10;							// TODO: for testing, deleted later
 		        
-		        for (int i = 0; i < noOFRowsToRead; i++) {
+		        double sum = 0.0;
+		        
+		        for (int i = 0; i < noOfRowsToRead; i++) {
 		        	// Each line is read as 1 array
 		        	nextRecord = csvReader.readNext();
 		        	
-		        	// timeOfTheDay in row
-		        	int timeOfTheDay = Integer.parseInt(nextRecord[TIME_INDEX]);
-		        	// 9:00 PM on the 04/01/2012 - 1333314000
-		        	// 9:00 PM on the 04/02/2012 - 1333400400
-		        	// 9:00 PM on the 04/03/2012 - 1333486800
-		        	System.out.println("Time of the day: " + timeOfTheDay);
-		        	
-		        	// usage in row
-		        	System.out.println("Usage: " + nextRecord[dataIndex]);
-		        	
+		        	sum += Double.parseDouble(nextRecord[dataIndex]);	        	
 		        }
+		        
+		        average = sum/noOfRowsToRead;
+		        System.out.println("prediction: " + average);
+		        
 		    } catch (Exception e) {
 		    	e.printStackTrace();
 		    }
 		}
+		// TODO: for testing, delete later
+		// predictUsage = Double.toString(average);
 		return "";
     }
 
@@ -385,7 +387,6 @@ public class ApplianceAgent extends Agent {
 	private Double getActualEnergyUsage(int timeDuration) {
 		int dataIndex= applicantDict.get(this.applianceName.toUpperCase());
 		Double totalUsage = 0.0;
-    	File directory = new File(pathToCSV);
  	   
 		File file = new File(pathToCSV);
 		if(file.exists()) {
