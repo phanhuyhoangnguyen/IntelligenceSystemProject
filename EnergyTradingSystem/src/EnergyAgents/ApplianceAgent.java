@@ -285,8 +285,8 @@ public class ApplianceAgent extends Agent {
 		    }
 		}
 		// TODO: for testing, delete later
-		// predictUsage = Double.toString(average);
-		return "";
+		predictUsage = Double.toString(average);
+		return predictUsage;
     }
 
 	private void register(ServiceDescription sd) {
