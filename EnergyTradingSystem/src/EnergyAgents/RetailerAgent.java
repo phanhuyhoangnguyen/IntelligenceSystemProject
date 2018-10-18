@@ -82,7 +82,6 @@ public class RetailerAgent extends Agent implements GUIListener{
 		registerO2AInterface(GUIListener.class, this);
 	}
 	
-	 
 	/**
 	 * initialize the agent in setup
 	 */

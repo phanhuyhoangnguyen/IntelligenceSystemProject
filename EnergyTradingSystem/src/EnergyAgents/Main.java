@@ -30,16 +30,14 @@ public class Main {
 		// Create Print GUI
 		createPrintAgent();
 		
-		// Create retailer agents
+		// Create appliance agents
 		List<AgentController> retailerAgents = createRetailerAgents();
-		
 		try {
 			Thread.sleep(300);
 		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		
 		//start home agent
 		AgentController homeAgent = createHomeAgent();
 		
@@ -49,11 +47,22 @@ public class Main {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+
+
+		// Create appliance agents
+		List<AgentController> applianceAgents = createApplianceAgents();
+		
+		try {
+			Thread.sleep(300);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		
 		
 		// Create retailer Test agent
 		//createRetailerTest();
-		
-		List<AgentController> applianceAgents = createApplianceAgents();
 		
 		// Start Main GUI
 		EventQueue.invokeLater(new Runnable() {
@@ -102,7 +111,7 @@ public class Main {
 		
 		// create agents
 		List<AgentController> applianceAgents= new ArrayList<>();
-		applianceAgents.add( JadeController.createAgent("Cloth washer", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","CWE"}) );
+		applianceAgents.add( JadeController.createAgent("Cloth Washer", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","CWE"}) );
 		applianceAgents.add( JadeController.createAgent("Dishwasher", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","DWE"}) );
 		applianceAgents.add( JadeController.createAgent("Force Air Energy", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","FRE"}) );
 		applianceAgents.add( JadeController.createAgent("Fridge Energy", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","FGE"}) );

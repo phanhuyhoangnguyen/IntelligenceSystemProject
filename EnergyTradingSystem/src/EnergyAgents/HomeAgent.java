@@ -37,6 +37,7 @@ public class HomeAgent extends Agent implements GUIListener
 
     //Total energy consumption get from appliance agent
     private float totalEnergyConsumption;
+    private int applianceCount;
 
     //The budget is set by user
     private double budgetLimit;
@@ -65,23 +66,25 @@ public class HomeAgent extends Agent implements GUIListener
      */
     private void init()
     {
-        this.totalEnergyConsumption = 0;
+        this.totalEnergyConsumption = 10;
+        this.applianceCount = 0;
         this.duration = 1;
-        this.budgetLimit = Math.round(Math.random()*501) + 300;	// from $300 - $500
-        this.idealBudgetLimit = this.budgetLimit * 0.7; // 70% of the budget
+        //this.budgetLimit = Math.round(Math.random()*501) + 200;	// from $200 - $500
+        this.budgetLimit = 500;
+        this.idealBudgetLimit = this.budgetLimit * 0.8; // 80% of the budget
 
         //Agent name and type
         this.agentName = "Home";
         this.agentType = "Home";
 
         //Conditions for communication
-        this.isNewReport = true;
+        this.isNewReport = false;
         this.startNegotiation = false;
         this.finishedNegotiation = false;
 
         //For negotiation
         this.bestOffer = null;
-        this.bestPrice = this.idealBudgetLimit;
+        this.bestPrice = this.budgetLimit / this.totalEnergyConsumption;
     }
     /**
      * End of initialize value for home agent
@@ -136,8 +139,9 @@ public class HomeAgent extends Agent implements GUIListener
 
 
         //Communicate with the retailer agents
-        CommunicateWithRetailer(retailerSequenceBehaviour);
         homeSequenceBehaviour.addSubBehaviour(retailerSequenceBehaviour);
+        CommunicateWithRetailer(retailerSequenceBehaviour);
+
         
         addBehaviour(homeSequenceBehaviour);
         
@@ -146,24 +150,30 @@ public class HomeAgent extends Agent implements GUIListener
     
     private void CommunicateWithAppliance(SequentialBehaviour homeBehaviour)
     {
+
+        AID[] appliances = getAgentList("Appliance");
+        
         //Message template to listen only for messages matching te correct interaction protocol and performative
         MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.INFORM));
 
         //Add the AchieveREresponder behaviour which implements the reponder role in a FIPA_REQUEST interaction protocol
         //The responder can either choose to agree to request or refuse request
+        System.out.println(" **** GET TOTAL DEMAND **** ");
         homeBehaviour.addSubBehaviour(new AchieveREResponder(this, template){
-            protected ACLMessage prepareResponse(ACLMessage request) throws NotUnderstoodException, RefuseException {
-
-                System.out.println(" **** GET TOTAL DEMAND **** ");
-
+            protected ACLMessage handleRequest(ACLMessage request) throws NotUnderstoodException, RefuseException {
+                System.out.println("");
 				System.out.println(getLocalName() + ": REQUEST received from "
                         + request.getSender().getLocalName() + ".\nThe demand is " + request.getContent()+ "");
                         
                 totalEnergyConsumption += Double.parseDouble(request.getContent());
 
-                System.out.println("Total Demand: " + totalEnergyConsumption +"\n");
+                System.out.println("Total Demand: " + totalEnergyConsumption);
+                ++applianceCount;
+                System.out.println("Appliance Number: " + applianceCount);
+                System.out.println("Appliance length: " + appliances.length);
+
 				// Method to determine how to respond to request
-				if (isNewReport) {
+				if (true) {
 					// Agent agrees to perform the action. Note that in the FIPA-Request
 					// protocol the AGREE message is optional. Return null if you
 					// don't want to send it.
@@ -171,24 +181,28 @@ public class HomeAgent extends Agent implements GUIListener
 					ACLMessage agree = request.createReply();
                     agree.setPerformative(ACLMessage.AGREE);
                     
-                    isNewReport = false;
-                    startNegotiation = true;
-                    homeBehaviour.removeSubBehaviour(this);
+                    
 					return agree;
 				} else {
-					// Agent refuses to perform the action and responds with a REFUSE
+                    // Agent refuses to perform the action and responds with a REFUSE
+                    if(5 == applianceCount){
+                        //CommunicateWithRetailer(homeSequenceBehaviour);
+
+                        isNewReport = false;
+                        finishedNegotiation = true;
+                    }
 					System.out.println("Agent " + getLocalName() + ": Refuse");
 					throw new RefuseException("check-failed");
                 }
                 
 
-			}
-            
+            }
+
 			// If the agent agreed to the request received, then it has to perform the associated action and return the result of the action
 			protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response)
 					throws FailureException {
 				// Perform the action (dummy method)
-				if (finishedNegotiation) {
+				if (true) {
 					System.out.println(getLocalName() + ": Action successfully performed, informing initiator");
 					ACLMessage inform = request.createReply();
 					inform.setPerformative(ACLMessage.INFORM);
@@ -209,15 +223,24 @@ public class HomeAgent extends Agent implements GUIListener
      * Communicate with Retailer Agent
      * @param retailerSeQue add sequence behaviour
      */
+    
     private void CommunicateWithRetailer(SequentialBehaviour retailerSeQue)
     {
-        System.out.println("**** NEGOTIATION **** ");
+        retailerSeQue.addSubBehaviour(new DelayBehaviour(this, 10000){
+            public void handleElapsedTimeout(){
+                System.out.println("**** NEGOTIATION **** ");
+                System.out.println("Home Budget: "  + budgetLimit);
+                System.out.println("Home Ideal Budget: "  + idealBudgetLimit);
+                System.out.println("");
+
+            }
+        });
 
         //Initialize message and template for communicating with Retailer Agent
         ACLMessage messageRetailer = newMessage(ACLMessage.CFP);	// Tola: change to CFP
-        //MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(message.getConversationId() ));
+        //MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(messageRetailer.getConversationId() ));
         MessageTemplate template = MessageTemplate.MatchAll();
-
+        
         //Add parallel behaviour to handle conversations
         //WHEN_ALL: terminiate the behaviour when all its children are done
         ParallelBehaviour par = new ParallelBehaviour(ParallelBehaviour.WHEN_ALL);
@@ -245,9 +268,10 @@ public class HomeAgent extends Agent implements GUIListener
                     		
                     		System.out.println(myAgent.getLocalName() + " received offer $" + offer + " from " + message.getSender().getLocalName());
                     		printGUI(myAgent.getLocalName() + " received offer <b>$" + offer + "</b> from " + message.getSender().getLocalName());
-                            
+                            System.out.println( offer  + " < " + bestPrice);
+
                     		//Compare with budgetLimit
-                            if(offer * totalEnergyConsumption <= bestPrice){
+                            if(offer <= bestPrice){
                                 bestPrice = offer;// set new better limit
                                 bestOffer = message;
                             }
@@ -259,6 +283,8 @@ public class HomeAgent extends Agent implements GUIListener
                 }
             });
         }
+
+        send(messageRetailer);
         
         /** 2ND --- Get the orders, choose the best deal and decide whether ask for a better deal */
         // Delay 2s before sending the request
@@ -276,7 +302,7 @@ public class HomeAgent extends Agent implements GUIListener
                     System.out.println(getLocalName() + "'s ideal budget is $" + idealBudgetLimit);
                     printGUI("");
                     ACLMessage reply = bestOffer.createReply();
-                    if( bestPrice > idealBudgetLimit){//negotiate the new price if the original offer is not good
+                    if( bestPrice > idealBudgetLimit / totalEnergyConsumption){//negotiate the new price if the original offer is not good
                     	
                         reply.setPerformative(ACLMessage.REQUEST);
                         
@@ -317,7 +343,7 @@ public class HomeAgent extends Agent implements GUIListener
         //Tola : handle the counter offer
         retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 3000, null ) {
 			public void handle( ACLMessage message) {
-				if( bestPrice <= idealBudgetLimit) {
+				if( bestPrice <= idealBudgetLimit / totalEnergyConsumption) {
 					// no need to re-negotiate
 					return;
 				}
@@ -327,7 +353,7 @@ public class HomeAgent extends Agent implements GUIListener
 					//Get the counter offer from retailer
 					if ( message.getPerformative() == ACLMessage.REQUEST) {
 						ACLMessage reply = bestOffer.createReply();
-	                    if( bestPrice > idealBudgetLimit){//negotiate the new price
+	                    if( bestPrice > idealBudgetLimit /totalEnergyConsumption){//negotiate the new price
 	                        reply.setPerformative(ACLMessage.REQUEST);
 	                        try {
 	                        	double offer = Double.parseDouble(bestOffer.getContent());
@@ -390,7 +416,7 @@ public class HomeAgent extends Agent implements GUIListener
 			}
 		}); // end counter behaviour
 
-        /** 4TH --- Final decision */
+        /** 4TH --- Final decision 
         // have 3s before timeout
         retailerSeQue.addSubBehaviour( new MyReceiverBehaviour( this, 3000,
                 null) 
@@ -422,8 +448,8 @@ public class HomeAgent extends Agent implements GUIListener
 							//setup();//loop ultil get the order
 						}
 					}	
-				});
-        send(messageRetailer);
+				});*/
+        
     }
 
     /**
@@ -567,38 +593,7 @@ public class HomeAgent extends Agent implements GUIListener
         }
     }
 
-    //This class is used for delay when the behaviour STARTs
-    private class DelayBehaviour extends SimpleBehaviour 
-    {
-        private long    timeout, 
-                        wakeupTime;
-        private boolean finished = false;
-        
-        public DelayBehaviour(Agent a, long timeout) {
-            super(a);
-            this.timeout = timeout;
-        }
-        
-        public void onStart() {
-            wakeupTime = System.currentTimeMillis() + timeout;
-        }
-            
-        public void action() 
-        {
-            long dt = wakeupTime - System.currentTimeMillis();
-            if (dt <= 0) {
-                finished = true;
-                handleElapsedTimeout();
-            } else 
-                block(dt);
-                
-        } //end of action
-        
-        protected void handleElapsedTimeout() // by default do nothing !
-            { } 
-                    
-        public boolean done() { return finished; }
-    }
+    
 
     /* --- GUI --- */
     // Tola : add GUI

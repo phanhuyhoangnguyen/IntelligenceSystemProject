@@ -47,12 +47,12 @@ public class ApplianceAgent extends Agent {
 	private String serviceType;
 	
 	// For Message Communication to HomeAgent
-	private static final int UPATE_DURATION = 15000;				// 10s -> specify the frequency of message sent to Home Agent. 
+	private static final int UPATE_DURATION = 5000;				// 10s -> specify the frequency of message sent to Home Agent. 
 																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
 	// For energyUsage Stimulation
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
-	private static final int USAGE_DURATION = 1800000;				// 30 mins -> specify the total usage of agent in a period of time, 30 mins.
+	private static final int USAGE_DURATION = 5000;				// 30 mins -> specify the total usage of agent in a period of time, 30 mins.
 	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	
 	// For prediction
@@ -89,20 +89,19 @@ public class ApplianceAgent extends Agent {
 	        searchHomeAgent searchHomeAgent = new searchHomeAgent();
 	        
 	        // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
-	        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
+	        DelayBehaviour communicateToHome = new DelayBehaviour(this, UPATE_DURATION) {
 	    
-	            protected void onTick() {
-	            	if (!isDone) {
+	            protected void handleElapsedTimeout() {
+	            	
 		            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
 		    	        isDone = true;
 		    	        // Register state Predicting and Request to buy
 		            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
-		    	        
 		    	        // Register state Reporting Actual Usage
-		            	communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+		            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
 		    	        
 		    	        addBehaviour(communicationSequence);
-	            	}
+	            	
 	            }
 	        };
 	        
@@ -149,7 +148,7 @@ public class ApplianceAgent extends Agent {
     		// predictionUsage = predictUsage();
 			
 			// * @Dave: set a dummy value, delete after fixing the above
-			predictionUsage = "50";
+			predictionUsage = "5";
 			
         	// Send request to HomeAgent
             sendRequestBuyingEnergyToHome(predictionUsage); 
@@ -460,4 +459,5 @@ public class ApplianceAgent extends Agent {
 		applicantDict.put("TVE", 23);
 		applicantDict.put("UNE", 24);
 	}
+	
 }
