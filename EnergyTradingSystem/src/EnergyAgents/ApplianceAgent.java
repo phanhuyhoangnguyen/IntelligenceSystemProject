@@ -47,12 +47,12 @@ public class ApplianceAgent extends Agent {
 	private String serviceType;
 	
 	// For Message Communication to HomeAgent
-	private static final int UPATE_DURATION = 10000;				// 10s -> specify the frequency of message sent to Home Agent. 
+	private static final int UPATE_DURATION = 5000;				// 10s -> specify the frequency of message sent to Home Agent. 
 																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
 	// For energyUsage Stimulation
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
-	private static final int USAGE_DURATION = 1800000;				// 30 mins -> specify the total usage of agent in a period of time, 30 mins.
+	private static final int USAGE_DURATION = 5000;				// 30 mins -> specify the total usage of agent in a period of time, 30 mins.
 	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	
 	// For prediction
@@ -89,20 +89,19 @@ public class ApplianceAgent extends Agent {
 	        searchHomeAgent searchHomeAgent = new searchHomeAgent();
 	        
 	        // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
-	        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
+	        DelayBehaviour communicateToHome = new DelayBehaviour(this, UPATE_DURATION) {
 	    
-	            protected void onTick() {
-	            	if (!isDone) {
+	            protected void handleElapsedTimeout() {
+	            	
 		            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
 		    	        isDone = true;
 		    	        // Register state Predicting and Request to buy
 		            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
-		    	        
 		    	        // Register state Reporting Actual Usage
-		            	communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+		            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
 		    	        
 		    	        addBehaviour(communicationSequence);
-	            	}
+	            	
 	            }
 	        };
 	        
@@ -122,7 +121,7 @@ public class ApplianceAgent extends Agent {
 	// This behaviour perform service register 
     private class registerService extends OneShotBehaviour {
     	public void action() {
-    		 // Create Service Description to be registered from the arguments
+			// Create Service Description to be registered from the arguments
 	        ServiceDescription sd  = new ServiceDescription();
 	        sd.setType(getServiceType());
 	        sd.setName(getApplianceName());
@@ -143,8 +142,14 @@ public class ApplianceAgent extends Agent {
     // This behaviour search for home agent
     private class reportingEnergyUsagePrediction extends OneShotBehaviour {
     	public void action() {
-    		String predictionUsage = predictUsage();
-        	
+			String predictionUsage;
+			
+			// TODO @Dave: this one returns null value
+    		// predictionUsage = predictUsage();
+			
+			// * @Dave: set a dummy value, delete after fixing the above
+			predictionUsage = "5";
+			
         	// Send request to HomeAgent
             sendRequestBuyingEnergyToHome(predictionUsage); 
     	}
@@ -191,9 +196,9 @@ public class ApplianceAgent extends Agent {
 	    // send message
 	    send(msg);
     }
-	
+	// TODO check this
 	private void sendRequestBuyingEnergyToHome(String predictionUsage) {
-		ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
     	msg.addReceiver(getHomeAgent());								// this.homeAgent
         // Set the interaction protocol
     	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
@@ -201,24 +206,25 @@ public class ApplianceAgent extends Agent {
     	// Specify the reply deadline (10 seconds)
     	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
         
-    	// Set message content
-    	msg.setContent("Prediction Usage: " + predictionUsage);
+		// Set message content
+		// TODO @Dave: Only send the string of a number 
+    	msg.setContent(predictionUsage);
 
     	// Define the AchieveREInitiator behaviour with the message
     	addBehaviour(new AchieveREInitiator(this, msg) {
     		// Method to handle an agree message from responder
     		protected void handleAgree(ACLMessage agree) {
-    			System.out.println(getLocalName() + ": " + agree.getSender().getName() + " has agreed to the request");
+    			System.out.println(getLocalName() + ": " + agree.getSender().getLocalName() + " has agreed to the request");
     		}
     
     		// Method to handle an inform message from Home Agent after its negotiation with Retailer is success
 	        protected void handleInform(ACLMessage inform) {
-	        	System.out.println(getLocalName() + ": " + inform.getSender().getName() + " negotiate successful. Appliance's request is fulfiled");
+	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + " negotiate successful. Appliance's request is fulfiled");
 	        }
 	
 	        // Method to handle a refuse message from responder
 	        protected void handleRefuse(ACLMessage refuse) {
-	        	System.out.println(getLocalName() + ": " + refuse.getSender().getName() + " negotiate failed. Appliance's request is not met");
+	        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " negotiate failed. Appliance's request is not met");
 	        }
 	
 	        // Method to handle a failure message (failure in delivering the message)
@@ -227,7 +233,7 @@ public class ApplianceAgent extends Agent {
 	        		// FAILURE notification from the JADE runtime -> the receiver does not exist
 	        		System.out.println(getLocalName() + ": " + getHomeAgent() +" does not exist");
 	        	} else {
-	                System.out.println(getLocalName() + ": " + failure.getSender().getName() + " failed to perform the requested action");
+	                System.out.println(getLocalName() + ": " + failure.getSender().getLocalName() + " failed to perform the requested action");
 	        	}
 	        }
 	            
@@ -323,7 +329,7 @@ public class ApplianceAgent extends Agent {
         return null;
 	}
 	
-	 // Method to de register the service (on take down)
+	// Method to de register the service (on take down)
     protected void takeDown() {
     	try { DFService.deregister(this); }
     	catch (Exception e) {}
@@ -341,7 +347,7 @@ public class ApplianceAgent extends Agent {
             if (msg!=null) {
             	// Print out message content
             	System.out.println(getLocalName()+ ": Received response " + msg.getContent() + " from " + msg.getSender().getLocalName());
-           }
+           	}
         
             // Block the behaviour from terminating and keep listening to the message
             block();
@@ -453,4 +459,5 @@ public class ApplianceAgent extends Agent {
 		applicantDict.put("TVE", 23);
 		applicantDict.put("UNE", 24);
 	}
+	
 }

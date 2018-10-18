@@ -82,7 +82,6 @@ public class RetailerAgent extends Agent implements GUIListener{
 		registerO2AInterface(GUIListener.class, this);
 	}
 	
-	 
 	/**
 	 * initialize the agent in setup
 	 */
@@ -444,8 +443,8 @@ public class RetailerAgent extends Agent implements GUIListener{
 					case ACLMessage.CFP:
 						resetNegotiation();
 						
-						System.out.println( agentName + " sends the first negotiation " + negoPrice);
-						printGUI(agentName + " sends the first negotiation for " + negoPrice);
+						System.out.println( agentName + " sends the first negotiation $" + negoPrice);
+						printGUI(agentName + " sends the first negotiation for $" + negoPrice);
 						
 						//reply.setConversationId(msg.getConversationId());
 						reply.setPerformative(ACLMessage.INFORM);
@@ -487,14 +486,14 @@ public class RetailerAgent extends Agent implements GUIListener{
 							
 							// accept if in range
 							if ( offer >= negoPrice ) {
-								System.out.println( agentName + " sends accept message for " + offer);
-								printGUI(agentName + " accept the offer for " + offer);
+								System.out.println( agentName + " sends accept message for $" + offer);
+								printGUI(agentName + " accept the offer for $" + offer);
 								reply.setPerformative(ACLMessage.AGREE);
 								reply.setContent(String.valueOf(offer));
 							} else {
 								// send next round
-								System.out.println( agentName + " sends counter offer for " + negoPrice);
-								printGUI(agentName + " sends counter offer for <b>" + negoPrice + "</b>");
+								System.out.println( agentName + " sends counter offer for $" + negoPrice);
+								printGUI(agentName + " sends counter offer for <b>$" + negoPrice + "</b>");
 								reply.setPerformative(ACLMessage.REQUEST);
 								reply.setContent(Double.toString(negoPrice));
 								negoTimeStart = System.currentTimeMillis() / 1000;
@@ -513,8 +512,8 @@ public class RetailerAgent extends Agent implements GUIListener{
 					case ACLMessage.ACCEPT_PROPOSAL:
 					case ACLMessage.AGREE:
 						// Timeout
-						System.out.println( agentName + " completed for " + negoPrice);
-						printGUI( agentName + " completed for <b>" + negoPrice + "</b>");
+						System.out.println( agentName + " completed for $" + negoPrice);
+						printGUI( agentName + " completed for <b>$" + negoPrice + "</b>");
 						// TODO: sign new contract
 						reply.setPerformative(ACLMessage.AGREE);
 						reply.setContent(Double.toString(negoPrice));
