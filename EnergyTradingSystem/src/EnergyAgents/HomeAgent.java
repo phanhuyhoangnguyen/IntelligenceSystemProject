@@ -17,7 +17,7 @@ import java.util.*;
 
 import GUI.GUIListener;
 import GUI.HomeGUI;
-import GUI.RetailerGUIDetails;
+
 
 
 
@@ -51,6 +51,9 @@ public class HomeAgent extends Agent implements GUIListener
     private boolean startNegotiation;
     private boolean finishedNegotiation;
 
+    // Tola: check if get all appliances
+    private boolean isApplianceFinished;
+    
     //For waiting
     Random rand = newRandom();
 
@@ -66,7 +69,7 @@ public class HomeAgent extends Agent implements GUIListener
      */
     private void init()
     {
-        this.totalEnergyConsumption = 10;
+        this.totalEnergyConsumption = 0;
         this.applianceCount = 0;
         this.duration = 1;
         //this.budgetLimit = Math.round(Math.random()*501) + 200;	// from $200 - $500
@@ -84,8 +87,19 @@ public class HomeAgent extends Agent implements GUIListener
 
         //For negotiation
         this.bestOffer = null;
-        this.bestPrice = this.budgetLimit / this.totalEnergyConsumption;
+        this.bestPrice = this.budgetLimit;
+        //this.bestPrice = this.budgetLimit / this.totalEnergyConsumption;
     }
+    
+    private void resetDefault() {
+    	this.totalEnergyConsumption = 0;
+        this.applianceCount = 0;
+        
+        //For negotiation
+        this.bestOffer = null;
+        this.bestPrice = this.budgetLimit;
+    }
+    
     /**
      * End of initialize value for home agent
      */
@@ -136,16 +150,13 @@ public class HomeAgent extends Agent implements GUIListener
         
         //Communicate with Appliance Agent
         CommunicateWithAppliance(homeSequenceBehaviour);
-
-
-        //Communicate with the retailer agents
-        homeSequenceBehaviour.addSubBehaviour(retailerSequenceBehaviour);
-        CommunicateWithRetailer(retailerSequenceBehaviour);
-
-        
         addBehaviour(homeSequenceBehaviour);
-        
-    
+
+        // Tola: wait until all demands have been calculated
+        //Communicate with the retailer agents
+        //homeSequenceBehaviour.addSubBehaviour(retailerSequenceBehaviour);
+        //CommunicateWithRetailer(retailerSequenceBehaviour);
+
     }
     
     private void CommunicateWithAppliance(SequentialBehaviour homeBehaviour)
@@ -164,14 +175,37 @@ public class HomeAgent extends Agent implements GUIListener
                 System.out.println("");
 				System.out.println(getLocalName() + ": REQUEST received from "
                         + request.getSender().getLocalName() + ".\nThe demand is " + request.getContent()+ "");
-                        
-                totalEnergyConsumption += Double.parseDouble(request.getContent());
+                
+				// Tola: reset value if talk with appliance finished
+				if ( isApplianceFinished ) {
+					resetDefault();
+					isApplianceFinished = false;
+				}
+				
+				// just in case content is empty
+				double consume = 0;
+				try {
+					consume = Double.parseDouble(request.getContent());
+				}catch( NumberFormatException nfe ) {}
+                
+				totalEnergyConsumption += consume;
 
                 System.out.println("Total Demand: " + totalEnergyConsumption);
                 ++applianceCount;
                 System.out.println("Appliance Number: " + applianceCount);
                 System.out.println("Appliance length: " + appliances.length);
 
+                printGUI(getLocalName() +" added <b>" + request.getSender().getLocalName() + "</b>  consumes <b>" + consume + "</b>, Toal <b>" + totalEnergyConsumption + "</b>");
+                
+                // Tola: Communicate with the retailer agents
+                if ( appliances.length == applianceCount) {
+                	isApplianceFinished = true;
+                	CommunicateWithRetailer(retailerSequenceBehaviour);
+                	myAgent.addBehaviour(retailerSequenceBehaviour);
+                }
+
+                
+                
 				// Method to determine how to respond to request
 				if (true) {
 					// Agent agrees to perform the action. Note that in the FIPA-Request
@@ -226,7 +260,7 @@ public class HomeAgent extends Agent implements GUIListener
     
     private void CommunicateWithRetailer(SequentialBehaviour retailerSeQue)
     {
-        retailerSeQue.addSubBehaviour(new DelayBehaviour(this, 10000){
+        retailerSeQue.addSubBehaviour(new DelayBehaviour(this, 100){
             public void handleElapsedTimeout(){
                 System.out.println("**** NEGOTIATION **** ");
                 System.out.println("Home Budget: "  + budgetLimit);
@@ -239,26 +273,25 @@ public class HomeAgent extends Agent implements GUIListener
         //Initialize message and template for communicating with Retailer Agent
         ACLMessage messageRetailer = newMessage(ACLMessage.CFP);	// Tola: change to CFP
         //MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(messageRetailer.getConversationId() ));
-        MessageTemplate template = MessageTemplate.MatchAll();
+        MessageTemplate template = MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
         
+        // Tola: Parallel behaviour is not suitable for this, it's a step by step
         //Add parallel behaviour to handle conversations
         //WHEN_ALL: terminiate the behaviour when all its children are done
-        ParallelBehaviour par = new ParallelBehaviour(ParallelBehaviour.WHEN_ALL);
-        retailerSeQue.addSubBehaviour(par);
+        //ParallelBehaviour par = new ParallelBehaviour(ParallelBehaviour.WHEN_ALL);
+        //retailerSeQue.addSubBehaviour(par);
 
         //Get all retailer agents
         AID[] retailers = getAgentList("Retailer");
         
-        System.out.println("Retailer agents total number:" + retailers.length);
+        System.out.println("Retailer agents found:" + retailers.length);
 
         /** 1ST --- Inform retailers agent to send their offer */
         for( AID retailer : retailers){
             messageRetailer.addReceiver(retailer);
-            // Tola: print added agent
-            printGUI(getLocalName() + " add <font color='red'>" + retailer.getLocalName() + "</font>");
             
             // Got 5s to get the receiver the offers before timeout
-            par.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template){
+            retailerSeQue.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template){
                 public void handle(ACLMessage message)
                 {
                     if(message!=null){
@@ -267,7 +300,7 @@ public class HomeAgent extends Agent implements GUIListener
                     		double offer = Double.parseDouble(message.getContent());
                     		
                     		System.out.println(myAgent.getLocalName() + " received offer $" + offer + " from " + message.getSender().getLocalName());
-                    		printGUI(myAgent.getLocalName() + " received offer <b>$" + offer + "</b> from " + message.getSender().getLocalName());
+                    		//printGUI(myAgent.getLocalName() + " received offer <b>$" + offer + "</b> from " + message.getSender().getLocalName());
                             System.out.println( offer  + " < " + bestPrice);
 
                     		//Compare with budgetLimit
@@ -284,6 +317,11 @@ public class HomeAgent extends Agent implements GUIListener
             });
         }
 
+        // Tola: print asking for propose
+        printGUI("");
+        printGUI(getLocalName() + " asks for a proposal, total comsuption <b>" + totalEnergyConsumption + "</b>");
+        messageRetailer.setContent(String.valueOf(totalEnergyConsumption));;
+        
         send(messageRetailer);
         
         /** 2ND --- Get the orders, choose the best deal and decide whether ask for a better deal */
@@ -602,7 +640,7 @@ public class HomeAgent extends Agent implements GUIListener
 		HomeGUI gui = new HomeGUI(this);
 		gui.showGUI();
 	}
-	
+    
     
 	private void printGUI(String text) {
 		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
@@ -610,7 +648,12 @@ public class HomeAgent extends Agent implements GUIListener
 		msg.setContent("<font color='blue'>" + text + "</font>");
 		send(msg);
 	}
-    
+	private void printGUIClean() {
+		ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
+		msg.addReceiver(new AID(PrintAgent.AGENT_NAME, AID.ISLOCALNAME ));
+		msg.setContent("");
+		send(msg);
+	}
 
     /* --- Utility methods --- */
     protected static int cidCnt = 0;

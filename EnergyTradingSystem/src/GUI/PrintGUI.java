@@ -99,7 +99,7 @@ public class PrintGUI {
 			
 			Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 			int w = (int)screenSize.getWidth() / 2;
-			int h = (int)screenSize.getHeight();
+			int h = (int)screenSize.getHeight() - 60;
 			setSize(w, h);
 			
 			// remove the agent when close	
