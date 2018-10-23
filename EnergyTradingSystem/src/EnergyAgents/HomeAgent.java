@@ -67,7 +67,7 @@ public class HomeAgent extends Agent implements GUIListener
     {
         this.totalEnergyConsumption = 0;
         this.applianceCount = 0;
-        this.budgetLimit = getRandomDouble(50, 100);
+        this.budgetLimit = getRandomDouble(30, 50);
         this.idealBudgetLimit = this.budgetLimit * 0.7; // 70% of the budget
 
         //Agent name and type
@@ -86,6 +86,7 @@ public class HomeAgent extends Agent implements GUIListener
     private void resetDefault() {
     	this.totalEnergyConsumption = 0;
         this.applianceCount = 0;
+        this.idealBudgetLimit = this.budgetLimit * 0.7; // 70% of the budget
         
         //For negotiation
         this.bestOffer = null;
@@ -108,6 +109,7 @@ public class HomeAgent extends Agent implements GUIListener
     public void setBudgetLimit(double newBudgetLimit)
     {
         this.budgetLimit = newBudgetLimit;
+        this.idealBudgetLimit = this.budgetLimit * 0.7; // 70% of the budget
     }
      /**
       * End of Getter and Setter
@@ -146,7 +148,7 @@ public class HomeAgent extends Agent implements GUIListener
         AID[] appliances = getAgentList("Appliance");
         totalAppliances = appliances.length;
         //Message template to listen only for messages matching te correct interaction protocol and performative
-        MessageTemplate applianceTemplate = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.INFORM));
+        MessageTemplate applianceTemplate = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
         
         homeSequenceBehaviour.addSubBehaviour(new CommunicateWithApplianceBehaviour(this, applianceTemplate));
         

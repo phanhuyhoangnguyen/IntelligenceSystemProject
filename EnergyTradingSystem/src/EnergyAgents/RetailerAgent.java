@@ -45,9 +45,11 @@ public class RetailerAgent extends Agent implements GUIListener{
 	// current usage
 	private double currentUsage;
 	
-	// negotiation, price in cent per KWH, time in second
+	// negotiation price in cent per KWH, time in second
+	
 	// negotiation price is calculated in every iteration offer
 	private double negoPrice;
+	
 	// limit amount , eg. no less than 25 cents offer
 	private double negoLimitPrice;
 	// limit counter offer
@@ -91,12 +93,12 @@ public class RetailerAgent extends Agent implements GUIListener{
 		agentType = "Retailer";
 		
 		currentUsage = 0;
-		usageCharge = getRandomDouble(40.0, 50.0);
+		usageCharge = getRandomDouble(20.0, 30.0);	// 20 to 30 cents
 		overCharge = usageCharge + (usageCharge * 0.05);	// plus 5%
 		
-		negoPrice = usageCharge;
-		negoLimitPrice = negoPrice - (negoPrice * 0.15);	// eg. no more than 15%
-		negoIterateReduceBy = getRandomDouble(0.2, 0.2); // reduce x percent in each counter
+		negoPrice = calcPrice(0);	// calculate negoPrice based on demand
+		negoLimitPrice = truncatedDouble( negoPrice - (negoPrice * 0.15) );	// eg. no more than 15%
+		negoIterateReduceBy = 0.2; // reduce 0.2 percent in each counter
 		
 		negoMechanism = Mechanism.GENERAL;
 		negoCounterOffer = 3;
@@ -238,13 +240,8 @@ public class RetailerAgent extends Agent implements GUIListener{
 		// if no reach the limit counter
 		double nextOffer = 0;
 		if ( negoCounter < negoCounterOffer ) {
-			switch (negoMechanism) {
-				case BY_TIME:
-				case ON_DEMAND:
-				default:
-					double reducePercentage = (negoCounter + 1) * negoIterateReduceBy;
-					nextOffer = usageCharge - (usageCharge * reducePercentage);
-			}
+			double reducePercentage = (negoCounter + 1) * negoIterateReduceBy;
+			nextOffer = negoPrice - (negoPrice * reducePercentage);
 			// count the offer
 			negoCounter++;
 		}
@@ -252,6 +249,36 @@ public class RetailerAgent extends Agent implements GUIListener{
 		return truncatedDouble(nextOffer);
 	}
 
+	
+	/**
+	 * calculate negotiation price based on demand and mechanism
+	 * @param double demand
+	 * @return double price
+	 */
+	private double calcPrice(double demand) {
+		double price = (demand * usageCharge) / 100; // convert cents to dollar
+		
+		if ( demand > 0 ) {
+			switch( negoMechanism ) {
+				case ON_DEMAND:
+					if ( demand >= 150 ) {
+						price *= 0.2;
+					} else if ( demand >= 100 ) {
+						price *= 0.15;
+					} else  if ( demand >= 50 ) {
+						price *= 0.1;
+					}
+					break;
+				default:
+			}
+		}
+		
+		return truncatedDouble(price);
+	}
+
+
+	
+	
 	/* --- Jade function --- */
 	/**
 	 * setup jade agent
@@ -445,6 +472,25 @@ public class RetailerAgent extends Agent implements GUIListener{
 					case ACLMessage.CFP:
 						resetNegotiation();
 						
+						// calculate negotiation price based on demand
+						try {
+							double demand = Double.parseDouble(content);
+							negoPrice = calcPrice(demand);
+						}catch ( NumberFormatException nfe) {
+							nfe.printStackTrace();
+							System.out.println( agentName + " not understood.");
+							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+							reply.setContent("NOT UNDERSTOOD");
+							break;
+						}catch ( NullPointerException npe) {
+							npe.printStackTrace();
+							System.out.println( agentName + " not understood.");
+							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+							reply.setContent("NOT UNDERSTOOD");
+							break;
+						}
+						
+						
 						System.out.println( agentName + " sends the first negotiation $" + negoPrice);
 						printGUI(agentName + " sends the first negotiation for $" + negoPrice);
 						
@@ -454,20 +500,6 @@ public class RetailerAgent extends Agent implements GUIListener{
 						
 					// step 2: receive the counter offer from home agent, then calculate the offer
 					case ACLMessage.REQUEST:
-						double offer = 0;
-						// check the content is double
-						try {
-							offer = Double.parseDouble(content);
-						}catch ( NumberFormatException nfe) {
-							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
-							reply.setContent("NOT UNDERSTOOD");
-							break;
-						}catch ( NullPointerException npe) {
-							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
-							reply.setContent("NOT UNDERSTOOD");
-							break;
-						}
-						
 						// Time out
 						long timeNow = System.currentTimeMillis() / 1000;
 						if ( timeNow - negoTimeStart > negoTimeWait ) {
@@ -477,6 +509,26 @@ public class RetailerAgent extends Agent implements GUIListener{
 							reply.setContent("0");
 							break;
 						}
+						
+						double offer = 0;
+						// check the content is double
+						try {
+							offer = Double.parseDouble(content);
+						}catch ( NumberFormatException nfe) {
+							nfe.printStackTrace();
+							System.out.println( agentName + " not understood.");
+							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+							reply.setContent("NOT UNDERSTOOD");
+							break;
+						}catch ( NullPointerException npe) {
+							npe.printStackTrace();
+							System.out.println( agentName + " not understood.");
+							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+							reply.setContent("NOT UNDERSTOOD");
+							break;
+						}
+						
+						
 						
 						// start counter offer
 						double nextOffer = doCounterOffer(offer);
@@ -502,7 +554,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 							break;
 						} else {
 							System.out.println( agentName + " reject the counter offer");
-							printGUI( agentName + " reject the counter offer");
+							printGUI( agentName + " reject the counter offer is too low");
 							reply.setPerformative(ACLMessage.REFUSE);
 							reply.setContent(Double.toString(negoPrice));
 						}
