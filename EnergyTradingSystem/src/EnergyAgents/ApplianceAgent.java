@@ -5,6 +5,7 @@ import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.SequentialBehaviour;
+import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPANames;
@@ -46,8 +47,9 @@ public class ApplianceAgent extends Agent {
 	// For energyUsage Stimulation
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
-	private static final int USAGE_DURATION = 5000;					// 30 mins -> specify the total usage of agent in a period of time, 30 mins.
+	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	private static final int HALF_HOUR = 1800000;
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
@@ -56,12 +58,12 @@ public class ApplianceAgent extends Agent {
 	// For Home Agent
 	private AID homeAgent;
 	private static final String HomeAgentService = "Home";
-	private boolean isDone = false;
+	private boolean isFinishedNegotiated = true;
 	
 	public ApplianceAgent () {
 		
-		// this is set for skipping the first row in CSV file below
-		this.actualLivedSeconds = 1000;
+		// this is set for stimulating the Appliance Agent has lived for at least 30 mins (1 row in CSV)
+		this.actualLivedSeconds = HALF_HOUR;
 		intializeAppliantDictionary();
 	}
 
@@ -98,13 +100,13 @@ public class ApplianceAgent extends Agent {
     	public void action() {
 			String predictionUsage;
 			
-			double predictedValue = predictUsage();
+			double predictedValue = predictUsage(USAGE_DURATION);
 			
 			// round up the double value to 2 decimal places
 			DecimalFormat df = new DecimalFormat("#.##");
 			predictionUsage = df.format(predictedValue);
 			
-	        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + ") " + predictionUsage);
+	        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
 	        
         	// Send request to HomeAgent
             sendRequestBuyingEnergyToHome(predictionUsage); 
@@ -165,6 +167,7 @@ public class ApplianceAgent extends Agent {
 		// Set message content
     	msg.setContent(predictionUsage);
 
+    	isFinishedNegotiated = false;
     	// Define the AchieveREInitiator behaviour with the message
     	addBehaviour(new AchieveREInitiator(this, msg) {
     		// Method to handle an agree message from responder
@@ -177,7 +180,7 @@ public class ApplianceAgent extends Agent {
 	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + " has negotiated successful with Retailer Agent. Appliance's request is fulfiled");
 	        	System.out.println(getLocalName() + ": " + inform.getSender().getName() + "'s offer is " + inform.getContent());
 	        }
-	
+	        
 	        // Method to handle a refuse message from responder
 	        protected void handleRefuse(ACLMessage refuse) {
 	        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to buy energy. Appliance's request is not met");
@@ -198,52 +201,10 @@ public class ApplianceAgent extends Agent {
 	        // Method that is invoked when notifications have been received from all responders
 	        protected void handleAllResultNotifications(Vector notifications) {
 	        	System.out.println(getLocalName() + ": " + " the request is completed!");
-	        	isDone = false;
+	        	isFinishedNegotiated = true;
 	        }
 	    });
 	}
-	
-	protected double predictUsage() {
-		// get the data for the Appliance Agent from CSV file based on the index column
-		int dataIndex = applicantDict.get(this.applianceName.toUpperCase());
-		
-		double predictUsage = 0;
-        double average = 0;
-        double sum = 0.0;
- 	   
-		File file = new File(pathToCSV);
-		if(file.exists()) {
-		    try {
-		    	// Create an object of filereader class 
-		        FileReader filereader = new FileReader(pathToCSV); 
-		  
-		        // create csvReader object to read the csv file and skip already read Line
-		        CSVReader csvReader = new CSVReaderBuilder(filereader) 
-		                                  .withSkipLines(getActualLivedSeconds()/1000)			// index of rows to be read
-		                                  .build();
-		        String[] nextRecord;
-		        
-		        // Each row is for 30 min (1800s) -> if timeDuration is 30 mins (1800s) then 1 rows will be read
-		        int noOfRowsToRead = (LIVED_DAYS * secondsInADay)/1800;
-		        
-		        for (int i = 0; i < noOfRowsToRead; i++) {
-		        	// Each line is read as 1 array
-		        	nextRecord = csvReader.readNext();
-		        	
-		        	sum += Double.parseDouble(nextRecord[dataIndex]);
-		        }
-		        
-		        average = sum/noOfRowsToRead;
-		        
-		        // predicted value is the average calculated from the values in CSV file
-		        predictUsage = average;
-		        
-		    } catch (Exception e) {
-		    	e.printStackTrace();
-		    }
-		}
-		return predictUsage;
-    }
 
 	private void register(ServiceDescription sd) {
 		DFAgentDescription dfd = new DFAgentDescription();
@@ -316,8 +277,8 @@ public class ApplianceAgent extends Agent {
 		return this.serviceType;
 	}
 	
-	private int setActualLivedSeconds(int actualLivedSeconds) {
-		return this.actualLivedSeconds = actualLivedSeconds;
+	private void setActualLivedSeconds(int actualLivedSeconds) {
+		this.actualLivedSeconds = actualLivedSeconds;
 	}
 	
 	private int getActualLivedSeconds() {
@@ -333,12 +294,14 @@ public class ApplianceAgent extends Agent {
 	}
 	
 	/**
-	 *  Energy Consumption Stimulation - Agent reads from data from CSV file and return
+	 *  Energy Consumption Prediction - Naive Prediction with the data from CSV file
 	 */
-	private Double getActualEnergyUsage(int timeDuration) {
-		int dataIndex= applicantDict.get(this.applianceName.toUpperCase());
-		Double totalUsage = 0.0;
- 	   
+	protected double predictUsage(int duration) {
+		// get the data for the Appliance Agent from CSV file based on the index column
+		int dataIndex = applicantDict.get(this.applianceName.toUpperCase());
+		
+		double predictUsage = 0;
+		
 		File file = new File(pathToCSV);
 		if(file.exists()) {
 		    try {
@@ -346,30 +309,73 @@ public class ApplianceAgent extends Agent {
 		        FileReader filereader = new FileReader(pathToCSV); 
 		  
 		        // create csvReader object to read the csv file and skip already read Line
-		        CSVReader csvReader = new CSVReaderBuilder(filereader) 
-		                                  .withSkipLines(getActualLivedSeconds()/1000)			// index of rows to be read
+		        // predicted values is start from row 1 -> this will be used to compared with actual usage in row 2
+		        CSVReader csvReader = new CSVReaderBuilder(filereader)
+		                                  .withSkipLines(getActualLivedSeconds()/HALF_HOUR)	// number of row to be skipped
 		                                  .build();
 		        String[] nextRecord;
 		        
-		        // Each row is for 30 min -> if timeDuration is 30 mins then 1 rows will be read
-		        int noOFRowsToRead = timeDuration / 1800000;
+		        // the duration is set to be equal to the energy usage consumption duration - 30 mins (1800s) -> 1 row
+		        int noOfRowsToRead = duration / HALF_HOUR;
+		        
+		        for (int i = 0; i < noOfRowsToRead; i++) {
+		        	// Each line is read as 1 array
+		        	nextRecord = csvReader.readNext();
+		        	
+		        	 // predicted value is the last observation from the values in CSV file
+		        	predictUsage = Double.parseDouble(nextRecord[dataIndex]);
+		        }
+		        
+		    } catch (Exception e) {
+		    	e.printStackTrace();
+		    }
+		}
+		
+		return predictUsage;
+    }
+	
+	/**
+	 *  Energy Consumption Stimulation - Agent reads from data from CSV file and return
+	 */
+	private Double getActualEnergyUsage(int timeDuration) {
+		int dataIndex= applicantDict.get(this.applianceName.toUpperCase());
+		Double totalUsage = 0.0;
+		
+		// TODO: discuss with team
+        System.out.println(getApplianceName() + " getActualLivedSeconds before updating: "+ getActualLivedSeconds() + " timeDuration: " + timeDuration);
+		// update the number second have lived: move row 1 -> row 2 for CSV reading below
+		setActualLivedSeconds(getActualLivedSeconds() + timeDuration);
+        System.out.println(getApplianceName() + " getActualLivedSeconds after updating: "+ getActualLivedSeconds());
+ 	   
+		File file = new File(pathToCSV);
+		if(file.exists()) {
+		    try {
+		    	// Create an object of FileReader class 
+		        FileReader filereader = new FileReader(pathToCSV); 
+		  
+		        // create csvReader object to read the csv file and skip already read Line
+		        // actual usage is read from row 2
+		        CSVReader csvReader = new CSVReaderBuilder(filereader) 
+		                                  .withSkipLines(getActualLivedSeconds()/HALF_HOUR)			// number of row to be skipped
+		                                  .build();
+		        
+		        String[] nextRecord;
+		        
+		        // Each row is for 30 min -> if timeDuration is 30 mins (1800s) then 1 rows will be read
+		        int noOFRowsToRead = timeDuration / HALF_HOUR;
 		        
 		        for (int i = 0; i < noOFRowsToRead; i++) {
 		        	// Each line is read as 1 array
 		        	nextRecord = csvReader.readNext();
 		        	// Calculate total usage
 		        	totalUsage += Double.parseDouble(nextRecord[dataIndex]);
-		        	System.out.println(nextRecord[dataIndex]);
 		        	
 		        }
 		    } catch (Exception e) {
 		    	e.printStackTrace();
 		    }
 		}
-		
-		// update the number second have lived
-		setActualLivedSeconds(getActualLivedSeconds() + timeDuration);
-		
+
 		return totalUsage;
 	}
 	
@@ -449,18 +455,18 @@ public class ApplianceAgent extends Agent {
         searchHomeAgent searchHomeAgent = new searchHomeAgent();
         
         // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
-        DelayBehaviour communicateToHome = new DelayBehaviour(this, UPATE_DURATION) {
+        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
     
-            protected void handleElapsedTimeout() {
-            	
-            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
-    	        isDone = true;
-    	        // Register state Predicting and Request to buy
-            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
-    	        // Register state Reporting Actual Usage
-            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
-    	        
-    	        addBehaviour(communicationSequence);
+            protected void onTick() {
+            	if (isFinishedNegotiated) {
+		        	SequentialBehaviour communicationSequence = new SequentialBehaviour();
+			        // Register state Predicting and Request to buy
+		        	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+			        // Register state Reporting Actual Usage
+		        	communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+			        
+			        addBehaviour(communicationSequence);
+            	}
             }
         };
         
