@@ -50,7 +50,7 @@ public class ApplianceAgent extends Agent {
 	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	
 	// For prediction
-	private static final int LIVED_DAYS = 30;						// 30 days: number of days agents have lived in the stimulation
+	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
 	private static final int secondsInADay = 86400;					// number of seconds in a day
 	
 	// For Home Agent
@@ -63,7 +63,6 @@ public class ApplianceAgent extends Agent {
 		// this is set for skipping the first row in CSV file below
 		this.actualLivedSeconds = 1000;
 		intializeAppliantDictionary();
-		
 	}
 
 	protected void setup() {
@@ -73,59 +72,17 @@ public class ApplianceAgent extends Agent {
 	        this.serviceType = args[0].toString();
 	        System.out.println("Appliance Agent: " + getLocalName() + " is created!");
 	        
-	        SequentialBehaviour sb = new SequentialBehaviour();
-	        addBehaviour(new WaitForStart());
-	        
-	        registerService registerService = new registerService();
-	        searchHomeAgent searchHomeAgent = new searchHomeAgent();
-	        
-	        // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
-	        DelayBehaviour communicateToHome = new DelayBehaviour(this, UPATE_DURATION) {
-	    
-	            protected void handleElapsedTimeout() {
-	            	
-	            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
-	    	        isDone = true;			// TODO: check and delete if this is no longer used
-	    	        // Register state Predicting and Request to buy
-	            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
-	    	        // Register state Reporting Actual Usage
-	            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
-	    	        
-	    	        addBehaviour(communicationSequence);
-	            }
-	        };
-	        
-	        sb.addSubBehaviour(registerService);
-	        sb.addSubBehaviour(searchHomeAgent);	 
-	        
-	        // Sending message every 5 seconds
-	        sb.addSubBehaviour(communicateToHome);
-	        
-	        // add sequential behaviour to the Agent
-	        addBehaviour(sb);
-		} else {
-			System.out.println(getLocalName() + ": " + "You have not specified any arguments.");
-		}
-		
-		
-		// Create Service Description to be registered from the arguments
-        ServiceDescription sd  = new ServiceDescription();
-        sd.setType(getServiceType());
-        sd.setName(getApplianceName());
-        register(sd);
-		
-    }
-	
-	// This behaviour perform service register 
-    private class registerService extends OneShotBehaviour {
-    	public void action() {
 			// Create Service Description to be registered from the arguments
 	        ServiceDescription sd  = new ServiceDescription();
 	        sd.setType(getServiceType());
 	        sd.setName(getApplianceName());
-	        // calling Agent's method to start the registration process
 	        register(sd);
-    	}
+	        
+	        addBehaviour(new WaitForStart());
+	        
+		} else {
+			System.out.println(getLocalName() + ": " + "You have not specified any arguments.");
+		}
     }
     
     // This behaviour search for home agent
@@ -147,7 +104,7 @@ public class ApplianceAgent extends Agent {
 			DecimalFormat df = new DecimalFormat("#.##");
 			predictionUsage = df.format(predictedValue);
 			
-	        System.out.println("prediction: " + predictionUsage);
+	        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + ") " + predictionUsage);
 	        
         	// Send request to HomeAgent
             sendRequestBuyingEnergyToHome(predictionUsage); 
@@ -196,10 +153,9 @@ public class ApplianceAgent extends Agent {
 	    send(msg);
     }
     
-	// TODO check this
 	private void sendRequestBuyingEnergyToHome(String predictionUsage) {
 		ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-    	msg.addReceiver(getHomeAgent());								// this.homeAgent
+    	msg.addReceiver(getHomeAgent());
         // Set the interaction protocol
     	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
 
@@ -207,7 +163,6 @@ public class ApplianceAgent extends Agent {
     	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
         
 		// Set message content
-		// TODO @Dave: Only send the string of a number 
     	msg.setContent(predictionUsage);
 
     	// Define the AchieveREInitiator behaviour with the message
@@ -311,6 +266,9 @@ public class ApplianceAgent extends Agent {
 	    catch (FIPAException fe) { fe.printStackTrace(); } 
 	}
 	
+	/**
+	 *  Find and return Agent from its service
+	 */
     private DFAgentDescription[] getService(String service) {
 		DFAgentDescription dfd = new DFAgentDescription();
 		
@@ -330,31 +288,13 @@ public class ApplianceAgent extends Agent {
         return null;
 	}
 	
-	// Method to de register the service (on take down)
+	/**
+	 *  Method to de register the service (on take down)
+	 */
     protected void takeDown() {
     	try { DFService.deregister(this); }
     	catch (Exception e) {}
     }
-
-
-    // TODO: check if this is no longer neccessary, will be deleted
-	private class msgReceivingBehaviour extends CyclicBehaviour {
-
-		@Override
-		public void action() {
-			System.out.println(getLocalName() + ": Waiting for message");
-
-            // Retrieve message from message queue if there is
-            ACLMessage msg= receive();
-            if (msg!=null) {
-            	// Print out message content
-            	System.out.println(getLocalName()+ ": Received response " + msg.getContent() + " from " + msg.getSender().getLocalName());
-           	}
-        
-            // Block the behaviour from terminating and keep listening to the message
-            block();
-		}
-	}
 	
 	protected ApplianceAgent getApplianceAgent() {
 		return this;
@@ -392,7 +332,9 @@ public class ApplianceAgent extends Agent {
 		return this.homeAgent;
 	}
 	
-	// Energy Consumption Stimulation - Agent doesn't actual consume energy, it reads from data file and return
+	/**
+	 *  Energy Consumption Stimulation - Agent reads from data from CSV file and return
+	 */
 	private Double getActualEnergyUsage(int timeDuration) {
 		int dataIndex= applicantDict.get(this.applianceName.toUpperCase());
 		Double totalUsage = 0.0;
@@ -431,6 +373,9 @@ public class ApplianceAgent extends Agent {
 		return totalUsage;
 	}
 	
+	/**
+	 * Initialize the map which Appliance's Name and its address in CSV file
+	 */
 	private void intializeAppliantDictionary() {
 		applicantDict = new HashMap<String, Integer>();
 		applicantDict.put("WHE", 2);
@@ -457,7 +402,6 @@ public class ApplianceAgent extends Agent {
 		applicantDict.put("TVE", 23);
 		applicantDict.put("UNE", 24);
 	}
-	
 	
 	/**
 	 * Print to GUI agent
@@ -490,11 +434,10 @@ public class ApplianceAgent extends Agent {
 					//System.out.println("<font color='gray'> Start negotiation</font>");
 					startNegotiation();
 				}
-			}else {
+			} else {
 				block();
 			}
 		}
-		
 	} // end wait for start
 	
 	/**
@@ -510,18 +453,18 @@ public class ApplianceAgent extends Agent {
     
             protected void handleElapsedTimeout() {
             	
-	            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
-	    	        isDone = true;
-	    	        // Register state Predicting and Request to buy
-	            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
-	    	        // Register state Reporting Actual Usage
-	            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
-	    	        
-	    	        addBehaviour(communicationSequence);
-            	
+            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
+    	        isDone = true;
+    	        // Register state Predicting and Request to buy
+            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+    	        // Register state Reporting Actual Usage
+            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+    	        
+    	        addBehaviour(communicationSequence);
             }
         };
         
+        // Trigger service to find home agent
         sb.addSubBehaviour(searchHomeAgent);	 
         
         // Sending message every 5 seconds
@@ -529,10 +472,5 @@ public class ApplianceAgent extends Agent {
         
         // add sequential behaviour to the Agent
         addBehaviour(sb);
-        
-        
 	} // end start negotiation
-	
-	
-	
 }

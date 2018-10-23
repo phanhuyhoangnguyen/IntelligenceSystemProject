@@ -165,7 +165,7 @@ public class HomeAgent extends Agent implements GUIListener
         AID[] appliances = getAgentList("Appliance");
         
         //Message template to listen only for messages matching te correct interaction protocol and performative
-        MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.INFORM));
+        MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
 
         //Add the AchieveREresponder behaviour which implements the reponder role in a FIPA_REQUEST interaction protocol
         //The responder can either choose to agree to request or refuse request
