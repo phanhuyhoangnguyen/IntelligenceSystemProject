@@ -504,7 +504,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 							System.out.println( agentName + " reject the counter offer");
 							printGUI( agentName + " reject the counter offer");
 							reply.setPerformative(ACLMessage.REFUSE);
-							reply.setContent("0");
+							reply.setContent(Double.toString(negoPrice));
 						}
 						
 						break;
