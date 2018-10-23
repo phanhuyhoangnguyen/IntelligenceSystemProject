@@ -130,7 +130,7 @@ public class ApplianceAgent extends Agent {
     		// predictionUsage = predictUsage();
 			
 			// * @Dave: set a dummy value, delete after fixing the above
-			predictionUsage = "5";
+			predictionUsage = "2";
 			
         	// Send request to HomeAgent
             sendRequestBuyingEnergyToHome(predictionUsage); 
