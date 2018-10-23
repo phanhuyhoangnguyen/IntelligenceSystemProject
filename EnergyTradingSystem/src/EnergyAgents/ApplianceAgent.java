@@ -25,6 +25,10 @@ import java.util.Vector;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 
+import GUI.GUIListener;
+import GUI.RetailerGUIDetails;
+import database.DbHelper;
+
 /**
  * ApplianceAgent
  * @author Phan
@@ -59,6 +63,7 @@ public class ApplianceAgent extends Agent {
 		// this is set for skipping the first row in CSV file below
 		this.actualLivedSeconds = 1000;
 		intializeAppliantDictionary();
+		
 	}
 
 	protected void setup() {
@@ -68,7 +73,7 @@ public class ApplianceAgent extends Agent {
 	        this.serviceType = args[0].toString();
 	        System.out.println("Appliance Agent: " + getLocalName() + " is created!");
 	        
-	        SequentialBehaviour sb = new SequentialBehaviour();
+	        addBehaviour(new WaitForStart());
 	        
 	        registerService registerService = new registerService();
 	        searchHomeAgent searchHomeAgent = new searchHomeAgent();
@@ -100,6 +105,14 @@ public class ApplianceAgent extends Agent {
 		} else {
 			System.out.println(getLocalName() + ": " + "You have not specified any arguments.");
 		}
+		
+		
+		// Create Service Description to be registered from the arguments
+        ServiceDescription sd  = new ServiceDescription();
+        sd.setType(getServiceType());
+        sd.setName(getApplianceName());
+        register(sd);
+		
     }
 	
 	// This behaviour perform service register 
@@ -109,7 +122,6 @@ public class ApplianceAgent extends Agent {
 	        ServiceDescription sd  = new ServiceDescription();
 	        sd.setType(getServiceType());
 	        sd.setName(getApplianceName());
-	        
 	        // calling Agent's method to start the registration process
 	        register(sd);
     	}
@@ -444,5 +456,82 @@ public class ApplianceAgent extends Agent {
 		applicantDict.put("TVE", 23);
 		applicantDict.put("UNE", 24);
 	}
+	
+	
+	/**
+	 * Print to GUI agent
+	 * @param text
+	 */
+	private void printGUI(String text) {
+		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+		msg.addReceiver(new AID(PrintAgent.AGENT_NAME, AID.ISLOCALNAME ));
+		msg.setContent("<font color='red'>" + text + "</font>");
+		send(msg);
+	}
+	private void printGUIClean() {
+		ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
+		msg.addReceiver(new AID(PrintAgent.AGENT_NAME, AID.ISLOCALNAME ));
+		msg.setContent("");
+		send(msg);
+	}
+	
+	/**
+	 * Implement Cyclic behaviour
+	 * waiting for start inform
+	 */
+	private class WaitForStart extends CyclicBehaviour{
+		@Override
+		public void action() {
+			ACLMessage msg = myAgent.receive();
+			if (msg != null) {
+				if (msg.getPerformative() == ACLMessage.INFORM && msg.getContent().compareToIgnoreCase("start") == 0 ) {
+					printGUIClean();
+					//System.out.println("<font color='gray'> Start negotiation</font>");
+					startNegotiation();
+				}
+			}else {
+				block();
+			}
+		}
+		
+	} // end wait for start
+	
+	/**
+	 * Start negotiation
+	 */
+	private void startNegotiation() {
+		SequentialBehaviour sb = new SequentialBehaviour();
+        
+        searchHomeAgent searchHomeAgent = new searchHomeAgent();
+        
+        // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
+        DelayBehaviour communicateToHome = new DelayBehaviour(this, UPATE_DURATION) {
+    
+            protected void handleElapsedTimeout() {
+            	
+	            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
+	    	        isDone = true;
+	    	        // Register state Predicting and Request to buy
+	            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+	    	        // Register state Reporting Actual Usage
+	            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+	    	        
+	    	        addBehaviour(communicationSequence);
+            	
+            }
+        };
+        
+        sb.addSubBehaviour(searchHomeAgent);	 
+        
+        // Sending message every 5 seconds
+        sb.addSubBehaviour(communicateToHome);
+        
+        // add sequential behaviour to the Agent
+        addBehaviour(sb);
+        
+        
+	} // end start negotiation
+	
+	
 	
 }

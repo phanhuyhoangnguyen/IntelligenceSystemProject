@@ -1,4 +1,6 @@
 package GUI;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 /**
  * Retailer GUI
  * 
@@ -7,13 +9,18 @@ package GUI;
  */
 import java.awt.EventQueue;
 import java.awt.Font;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.Iterator;
 import java.util.List;
 
+import javax.management.MBeanServerBuilder;
 import javax.swing.GroupLayout;
 import javax.swing.ImageIcon;
+import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -23,7 +30,15 @@ import javax.swing.border.EmptyBorder;
 
 
 import EnergyAgents.JadeController;
+import jade.core.AID;
+import jade.core.Profile;
+import jade.core.behaviours.OneShotBehaviour;
+import jade.lang.acl.ACLMessage;
+import jade.util.leap.Properties;
 import jade.wrapper.AgentController;
+import jade.wrapper.ControllerException;
+import jade.wrapper.StaleProxyException;
+import jade.wrapper.gateway.JadeGateway;
 
 public class MainGUI extends JFrame {
 	private JPanel contentPane;
@@ -71,6 +86,7 @@ public class MainGUI extends JFrame {
 		
 		// create components
 		initComponent();
+		
 	}
 	
 	
@@ -82,7 +98,6 @@ public class MainGUI extends JFrame {
 		setBounds(100, 100, 520, 397);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		setContentPane(contentPane);
 		
 		JLabel mAppliance = new JLabel("appliance");
 		mAppliance.setIcon(new ImageIcon(getClass().getResource("/resources/Tools-icon.png"), "Appliances"));
@@ -108,6 +123,12 @@ public class MainGUI extends JFrame {
 		JLabel mRetailerText = new JLabel("Retailer");
 		mRetailerText.setFont(new Font("Tahoma", Font.BOLD, 19));
 		mRetailerText.addMouseListener(new OnMouseListener());
+		
+		JButton mStartButton = new JButton(" Start ");
+		mStartButton.setPreferredSize(new Dimension(100, 50));
+		mStartButton.addActionListener(new StartClick());
+		JPanel bottomPane = new JPanel();
+		bottomPane.add(mStartButton);
 		
 		
 		GroupLayout gl_contentPane = new GroupLayout(contentPane);
@@ -148,7 +169,15 @@ public class MainGUI extends JFrame {
 						.addComponent(mRetailerText))
 					.addContainerGap(127, Short.MAX_VALUE))
 		);
+		
+			
 		contentPane.setLayout(gl_contentPane);
+		
+		//setContentPane(contentPane);
+		add(contentPane, BorderLayout.CENTER);
+		add(bottomPane, BorderLayout.SOUTH);
+		
+		
 	}	// end components
 	
 	/**
@@ -207,6 +236,51 @@ public class MainGUI extends JFrame {
 	}
 	
 	
-	
-	
+	/*
+	 * Handle button start listener
+	 */
+	private class StartClick implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			System.out.println("Main GUI: start negotiation.");
+			
+			// Invoke appliance agents
+			Properties pp = new Properties();
+			pp.setProperty(Profile.MAIN_HOST, JadeController.MAINHOST);
+			pp.setProperty(Profile.MAIN_PORT, JadeController.MAINPORT);
+			JadeGateway.init(null, pp);
+			
+			OneShotBehaviour sendMessage = new OneShotBehaviour(){
+				@Override
+				public void action() {
+					ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+					msg.setContent("start");
+					// tell home
+					AID home = new AID("Home", AID.ISLOCALNAME);
+					msg.addReceiver(home);
+					
+					// tell appliance
+					for ( AgentController agent : applianceAgents) {
+						try {
+							AID aid = new AID(agent.getName(), AID.ISGUID);
+							msg.addReceiver(aid);
+						} catch (StaleProxyException e1) {
+							e1.printStackTrace();
+						}
+					}
+					
+					myAgent.send(msg);
+				}
+			};
+			
+			try {
+				JadeGateway.execute(sendMessage);
+			} catch (ControllerException | InterruptedException e1) {
+				e1.printStackTrace();
+			}
+			JadeGateway.shutdown();
+			
+		} // action perform
+		  
+	} // end click
 }

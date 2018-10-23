@@ -39,14 +39,17 @@ import jade.wrapper.gateway.JadeGateway;
  * 
  * @author Tola Veng
  * @date 2018-09-10 
+ * 
+ * @author Anh
+ * @date 
  */
 
 
 public class JadeController {
 	
 	private static JadeController jadeController = null;
-	private static final String MAINHOST = "localhost";
-	private static final String MAINPORT = "1099";
+	public static final String MAINHOST = "localhost";
+	public static final String MAINPORT = "1099";
 	
 	
 	// Jade
@@ -204,9 +207,9 @@ public class JadeController {
 	 * cmd: jade.Boot -agents agentAlias:AgentClassName()
 	 */
 	public static AgentController createAgent( String agentAlias, String agentClassName, ContainerController container ) {
-		return createAgent( agentAlias, agentClassName, container, null );
+		return createAgent( agentAlias, agentClassName, container, new Object[]{} );
 	}
-	
+	   
 	/**
 	 * Get list of agents' names
 	 * @param String container name

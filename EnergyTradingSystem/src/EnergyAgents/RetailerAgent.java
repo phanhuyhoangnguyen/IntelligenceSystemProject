@@ -435,6 +435,8 @@ public class RetailerAgent extends Agent implements GUIListener{
 			
 				// create a reply message
 				ACLMessage reply = msg.createReply();
+				//reply.setConversationId(msg.getConversationId());
+				reply.setProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
 				//reply.setProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
 				
 				// correspondent for individual response from home agent
@@ -446,7 +448,6 @@ public class RetailerAgent extends Agent implements GUIListener{
 						System.out.println( agentName + " sends the first negotiation $" + negoPrice);
 						printGUI(agentName + " sends the first negotiation for $" + negoPrice);
 						
-						//reply.setConversationId(msg.getConversationId());
 						reply.setPerformative(ACLMessage.INFORM);
 						reply.setContent(Double.toString(negoPrice));
 						break;
@@ -575,6 +576,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 		RetailerGUIDetails gui = new RetailerGUIDetails(this);
 		gui.showGUI();
 	}
+	
 	
 	private void printGUI(String text) {
 		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
