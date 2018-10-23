@@ -9,19 +9,22 @@ import jade.lang.acl.MessageTemplate;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.*;
 import jade.domain.FIPAException;
+import jade.proto.AchieveREResponder;
+import jade.domain.FIPANames;
+
 
 import java.util.*;
 
 import GUI.GUIListener;
 import GUI.HomeGUI;
-import GUI.RetailerGUIDetails;
+
 
 
 
 /**
  * Home Agent 
  * @author The 'Dangerous' Dave
- * 
+ *
  * @Description This agent will calculate the demand/ supplys, negotiate with Retailer agent and decide to choose the right offers.
  */
 
@@ -34,6 +37,7 @@ public class HomeAgent extends Agent implements GUIListener
 
     //Total energy consumption get from appliance agent
     private float totalEnergyConsumption;
+    private int applianceCount;
 
     //The budget is set by user
     private double budgetLimit;
@@ -43,29 +47,59 @@ public class HomeAgent extends Agent implements GUIListener
     private double bestPrice;
     private double negoBestPrice;
 
+    private boolean isNewReport;
+    private boolean startNegotiation;
+    private boolean finishedNegotiation;
+
+    // Tola: check if get all appliances
+    private boolean isApplianceFinished;
+    
     //For waiting
     Random rand = newRandom();
 
     //Best offer
     private ACLMessage bestOffer;
-    private ACLMessage message;
 
+    //Behaviours
+    private SequentialBehaviour retailerSequenceBehaviour;
+    private SequentialBehaviour homeSequenceBehaviour;
+    private Behaviour applianceSequenceBehaviour;
     /**
      * Initialize value for home agent
      */
     private void init()
     {
-        this.totalEnergyConsumption = 200;
+        this.totalEnergyConsumption = 0;
+        this.applianceCount = 0;
         this.duration = 1;
-        this.budgetLimit = Math.round(Math.random()*51) + 20;	// from 20 - 50
+        //this.budgetLimit = Math.round(Math.random()*501) + 200;	// from $200 - $500
+        this.budgetLimit = 500;
+        this.idealBudgetLimit = this.budgetLimit * 0.8; // 80% of the budget
 
-        agentName = "Home";
-        agentType = "Home";
+        //Agent name and type
+        this.agentName = "Home";
+        this.agentType = "Home";
 
+        //Conditions for communication
+        this.isNewReport = false;
+        this.startNegotiation = false;
+        this.finishedNegotiation = false;
+
+        //For negotiation
         this.bestOffer = null;
-        this.bestPrice = extractToBestPrice(this.totalEnergyConsumption, this.duration);
-        this.idealBudgetLimit = this.budgetLimit * 0.7;
+        this.bestPrice = this.budgetLimit;
+        //this.bestPrice = this.budgetLimit / this.totalEnergyConsumption;
     }
+    
+    private void resetDefault() {
+    	this.totalEnergyConsumption = 0;
+        this.applianceCount = 0;
+        
+        //For negotiation
+        this.bestOffer = null;
+        this.bestPrice = this.budgetLimit;
+    }
+    
     /**
      * End of initialize value for home agent
      */
@@ -91,8 +125,8 @@ public class HomeAgent extends Agent implements GUIListener
     {
         init();
         
-     // Register the interface that must be accessible by an external program through the O2A interface
-     registerO2AInterface(GUIListener.class, this);
+        // Register the interface that must be accessible by an external program through the O2A interface
+        registerO2AInterface(GUIListener.class, this);
     }
 
     /* --- Jade functions --- */
@@ -104,42 +138,160 @@ public class HomeAgent extends Agent implements GUIListener
         this.agentName += "_" + getAID().getLocalName();
         System.out.println(agentName + " " + agentType + ": created.");
         
-        //Register the service
+        //Register the service for Home Agent
         ServiceDescription sd = new ServiceDescription();
         sd.setType(this.agentType);
         sd.setName(this.agentName);
-        register(sd);
+        register(sd);      
         
-        //initialize message and template
-        message = newMessage(ACLMessage.CFP);	// Tola: change to CFP
-        //MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(message.getConversationId() ));
-        MessageTemplate template = MessageTemplate.MatchAll();
+        //Declare behaviours
+        homeSequenceBehaviour = new SequentialBehaviour();
+        retailerSequenceBehaviour = new SequentialBehaviour();
         
-        //Add behaviours
-        //addBehaviour(new ReceiveDemand());
-        //addBehaviour(new TestBehaviour());
-        SequentialBehaviour seq = new SequentialBehaviour();
-        addBehaviour(seq);
+        //Communicate with Appliance Agent
+        CommunicateWithAppliance(homeSequenceBehaviour);
+        addBehaviour(homeSequenceBehaviour);
+
+        // Tola: wait until all demands have been calculated
+        //Communicate with the retailer agents
+        //homeSequenceBehaviour.addSubBehaviour(retailerSequenceBehaviour);
+        //CommunicateWithRetailer(retailerSequenceBehaviour);
+
+    }
+    
+    private void CommunicateWithAppliance(SequentialBehaviour homeBehaviour)
+    {
+
+        AID[] appliances = getAgentList("Appliance");
         
+        //Message template to listen only for messages matching te correct interaction protocol and performative
+        MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
+
+        //Add the AchieveREresponder behaviour which implements the reponder role in a FIPA_REQUEST interaction protocol
+        //The responder can either choose to agree to request or refuse request
+        System.out.println(" **** GET TOTAL DEMAND **** ");
+        homeBehaviour.addSubBehaviour(new AchieveREResponder(this, template){
+            protected ACLMessage handleRequest(ACLMessage request) throws NotUnderstoodException, RefuseException {
+                System.out.println("");
+				System.out.println(getLocalName() + ": REQUEST received from "
+                        + request.getSender().getLocalName() + ".\nThe demand is " + request.getContent()+ "");
+                
+				// Tola: reset value if talk with appliance finished
+				if ( isApplianceFinished ) {
+					resetDefault();
+					isApplianceFinished = false;
+				}
+				
+				// just in case content is empty
+				double consume = 0;
+				try {
+					consume = Double.parseDouble(request.getContent());
+				}catch( NumberFormatException nfe ) {}
+                
+				totalEnergyConsumption += consume;
+
+                System.out.println("Total Demand: " + totalEnergyConsumption);
+                ++applianceCount;
+                System.out.println("Appliance Number: " + applianceCount);
+                System.out.println("Appliance length: " + appliances.length);
+
+                printGUI(getLocalName() +" added <b>" + request.getSender().getLocalName() + "</b>  consumes <b>" + consume + "</b>, Toal <b>" + totalEnergyConsumption + "</b>");
+                
+                // Tola: Communicate with the retailer agents
+                if ( appliances.length == applianceCount) {
+                	isApplianceFinished = true;
+                	CommunicateWithRetailer(retailerSequenceBehaviour);
+                	myAgent.addBehaviour(retailerSequenceBehaviour);
+                }
+
+                
+                
+				// Method to determine how to respond to request
+				if (true) {
+					// Agent agrees to perform the action. Note that in the FIPA-Request
+					// protocol the AGREE message is optional. Return null if you
+					// don't want to send it.
+					System.out.println(getLocalName() + ": Agreeing to the request and responding with AGREE");
+					ACLMessage agree = request.createReply();
+                    agree.setPerformative(ACLMessage.AGREE);
+                    
+                    
+					return agree;
+				} else {
+                    // Agent refuses to perform the action and responds with a REFUSE
+                    if(5 == applianceCount){
+                        //CommunicateWithRetailer(homeSequenceBehaviour);
+
+                        isNewReport = false;
+                        finishedNegotiation = true;
+                    }
+					System.out.println("Agent " + getLocalName() + ": Refuse");
+					throw new RefuseException("check-failed");
+                }
+                
+
+            }
+
+			// If the agent agreed to the request received, then it has to perform the associated action and return the result of the action
+			protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response)
+					throws FailureException {
+				// Perform the action (dummy method)
+				if (true) {
+					System.out.println(getLocalName() + ": Action successfully performed, informing initiator");
+					ACLMessage inform = request.createReply();
+					inform.setPerformative(ACLMessage.INFORM);
+					inform.setContent(String.valueOf(Math.random()));
+					return inform;
+				} else {
+					// Action failed
+					System.out.println(getLocalName() + ": Action failed, informing initiator");
+					throw new FailureException("unexpected-error");
+				}
+            }
+            
+		});
+        
+    }
+    
+    /***
+     * Communicate with Retailer Agent
+     * @param retailerSeQue add sequence behaviour
+     */
+    
+    private void CommunicateWithRetailer(SequentialBehaviour retailerSeQue)
+    {
+        retailerSeQue.addSubBehaviour(new DelayBehaviour(this, 100){
+            public void handleElapsedTimeout(){
+                System.out.println("**** NEGOTIATION **** ");
+                System.out.println("Home Budget: "  + budgetLimit);
+                System.out.println("Home Ideal Budget: "  + idealBudgetLimit);
+                System.out.println("");
+
+            }
+        });
+
+        //Initialize message and template for communicating with Retailer Agent
+        ACLMessage messageRetailer = newMessage(ACLMessage.CFP);	// Tola: change to CFP
+        //MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(messageRetailer.getConversationId() ));
+        MessageTemplate template = MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
+        
+        // Tola: Parallel behaviour is not suitable for this, it's a step by step
         //Add parallel behaviour to handle conversations
         //WHEN_ALL: terminiate the behaviour when all its children are done
-        ParallelBehaviour par = new ParallelBehaviour(ParallelBehaviour.WHEN_ALL);
-
-        seq.addSubBehaviour(par);
+        //ParallelBehaviour par = new ParallelBehaviour(ParallelBehaviour.WHEN_ALL);
+        //retailerSeQue.addSubBehaviour(par);
 
         //Get all retailer agents
-        AID[] aids = getRetailerAgents("Retailer");
-        //AID[] aids = getRetailerAgents("Test");
+        AID[] retailers = getAgentList("Retailer");
         
-        System.out.println("Retailer agents total number:" + aids.length);
-        //Get offer from retailer agents
-        for( AID aid : aids){
-            message.addReceiver(aid);
-            // Tola: print added agent
-            printGUI(getLocalName() + " add <font color='red'>" + aid.getLocalName() + "</font>");
+        System.out.println("Retailer agents found:" + retailers.length);
+
+        /** 1ST --- Inform retailers agent to send their offer */
+        for( AID retailer : retailers){
+            messageRetailer.addReceiver(retailer);
             
             // Got 5s to get the receiver the offers before timeout
-            par.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template){
+            retailerSeQue.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template){
                 public void handle(ACLMessage message)
                 {
                     if(message!=null){
@@ -148,10 +300,11 @@ public class HomeAgent extends Agent implements GUIListener
                     		double offer = Double.parseDouble(message.getContent());
                     		
                     		System.out.println(myAgent.getLocalName() + " received offer $" + offer + " from " + message.getSender().getLocalName());
-                    		printGUI(myAgent.getLocalName() + " received offer <b>" + offer + "</b> from " + message.getSender().getLocalName());
-                            
+                    		//printGUI(myAgent.getLocalName() + " received offer <b>$" + offer + "</b> from " + message.getSender().getLocalName());
+                            System.out.println( offer  + " < " + bestPrice);
+
                     		//Compare with budgetLimit
-                            if(offer < bestPrice){
+                            if(offer <= bestPrice){
                                 bestPrice = offer;// set new better limit
                                 bestOffer = message;
                             }
@@ -163,22 +316,31 @@ public class HomeAgent extends Agent implements GUIListener
                 }
             });
         }
+
+        // Tola: print asking for propose
+        printGUI("");
+        printGUI(getLocalName() + " asks for a proposal, total comsuption <b>" + totalEnergyConsumption + "</b>");
+        messageRetailer.setContent(String.valueOf(totalEnergyConsumption));;
         
-        //Handle request 
+        send(messageRetailer);
+        
+        /** 2ND --- Get the orders, choose the best deal and decide whether ask for a better deal */
         // Delay 2s before sending the request
-        seq.addSubBehaviour( new DelayBehaviour(this, rand.nextInt(2000)){
+        retailerSeQue.addSubBehaviour( new DelayBehaviour(this, rand.nextInt(2000)){
             public void handleElapsedTimeout()
             {
                 if(bestOffer == null){
                     System.out.println("No offers.");
                 }
                 else{
+                    System.out.println("");
+                    System.out.println("2ND");
                     System.out.println("Best Price $" + bestPrice + " from " + bestOffer.getSender().getLocalName());
 
-                    System.out.println(getLocalName() + "'s ideal budget is " + idealBudgetLimit);
-
+                    System.out.println(getLocalName() + "'s ideal budget is $" + idealBudgetLimit);
+                    printGUI("");
                     ACLMessage reply = bestOffer.createReply();
-                    if( bestPrice > idealBudgetLimit){//negotiate the new price
+                    if( bestPrice > idealBudgetLimit / totalEnergyConsumption){//negotiate the new price if the original offer is not good
                     	
                         reply.setPerformative(ACLMessage.REQUEST);
                         
@@ -187,38 +349,49 @@ public class HomeAgent extends Agent implements GUIListener
                         reply.setContent(String.valueOf(negoBestPrice));
                         
                         printGUI("<font color='gray'>---- Start Negotiation -----</font>");
-                        printGUI("<font color='gray' size='-1'>Step 1:</font>");
+                        printGUI("<font color='gray' size='-1'>Stage 1:</font>");
                         System.out.println("Negotiation: Asking for price at $"+ reply.getContent());
-                        printGUI(getLocalName() + " received an offer <b>" + bestPrice + "</b> from <font color='red'>" + bestOffer.getSender().getLocalName() + "</font>");
-                        printGUI(getLocalName() + " sends a new offer <b>" + negoBestPrice + "</b>");
+                        printGUI(getLocalName() + " received an offer <b>$" + bestPrice + "</b> from <font color='red'>" + bestOffer.getSender().getLocalName() + "</font>");
+                        printGUI(getLocalName() + " sends a new offer <b>$" + negoBestPrice + "</b>");
                         send(reply);
                     }
-                    else{//Accept current offer
-                    	negoBestPrice = bestPrice;
+                    else{//Accept the original offer
+                        negoBestPrice = bestPrice;
+                        
+                        //Send agree message to retailer
+                        /*
                         reply.setPerformative(ACLMessage.AGREE);
                         reply.setContent(""+bestPrice);
                         System.out.println("Accept Current Offer: $"+ reply.getContent());
+                        */
+
                         // Tola: print gui
-                        printGUI(getLocalName() + " accepted the offer <b>" + bestPrice +"</b> from <font color='red'>" + bestOffer.getSender().getLocalName() + "</font>");
-                        send(reply);                        
+                        printGUI(getLocalName() + " accepted the offer <b>$" + bestPrice +"</b> from <font color='red'>" + bestOffer.getSender().getLocalName() + "</font>");
+                        send(reply);         
+                        
+                        //Finish negotiation
+						System.out.println("  --------- Finished ---------\n");
+						printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
                     }
                 }
             }
         });
         
-        
+        /** 3RD --- Get the counter offer if have from the retailer agent */
         //Tola : handle the counter offer
-        MyReceiverBehaviour counterOfferBehaviour = new MyReceiverBehaviour( this, 3000, null ) {
+        retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 3000, null ) {
 			public void handle( ACLMessage message) {
-				if( bestPrice <= idealBudgetLimit) {
+				if( bestPrice <= idealBudgetLimit / totalEnergyConsumption) {
 					// no need to re-negotiate
 					return;
 				}
 				if (message != null ) {
-					// counter offer
+                    System.out.println("");
+                    System.out.println("3RD");
+					//Get the counter offer from retailer
 					if ( message.getPerformative() == ACLMessage.REQUEST) {
 						ACLMessage reply = bestOffer.createReply();
-	                    if( bestPrice > idealBudgetLimit){//negotiate the new price
+	                    if( bestPrice > idealBudgetLimit /totalEnergyConsumption){//negotiate the new price
 	                        reply.setPerformative(ACLMessage.REQUEST);
 	                        try {
 	                        	double offer = Double.parseDouble(bestOffer.getContent());
@@ -231,8 +404,8 @@ public class HomeAgent extends Agent implements GUIListener
 	                        reply.setContent(String.valueOf(negoBestPrice));
 	                        
 	                        System.out.println("Second Negotiation: Asking for price at $"+ reply.getContent());
-	                        printGUI("<font color='gray' size='-1'>Step 2:</font>");
-	                        printGUI(getLocalName() + " sends the second offer <b>" + negoBestPrice + "</b>");
+	                        printGUI("<font color='gray' size='-1'>Stage 2:</font>");
+	                        printGUI(getLocalName() + " sends the second offer <b>$" + negoBestPrice + "</b>");
 	                        send(reply);
 	                    }
 	                    else{//Accept current offer
@@ -251,35 +424,46 @@ public class HomeAgent extends Agent implements GUIListener
 							return;
 						}
 						
-					// retailer agree
+					// retailer agree the first offer
 					} else if ( message.getPerformative() == ACLMessage.AGREE) {
-						System.out.println("The Second Propsal Accepted");
+						System.out.println("The Second Proposal Accepted");
 						System.out.println("The Second Proposal Offer: $"+ negoBestPrice);
-                        printGUI(getLocalName() + " accepted the second offer for " + negoBestPrice);
+                        printGUI(getLocalName() + "'s second offer is accepted, which is $" + negoBestPrice);
 						System.out.println("  --------- Finished ---------\n");
 						printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
 						
-					// retailer refuse
+					// retailer refuse the first offer
 					} else if ( message.getPerformative() == ACLMessage.REFUSE) {
+                        //Print out 
 						System.out.println("The Second Propsal Refused");
                         System.out.println("The Second Offer: $"+bestPrice);
-                        printGUI(getLocalName() + " reject the second offer for " + negoBestPrice);
+                        printGUI(getLocalName() + "'s second offer is rejected, which is $" + negoBestPrice);
+                        System.out.println("Accept the previous offer: $" + bestPrice);
+                        printGUI(getLocalName() + " takes the previous offer, which is $"+ bestPrice);
+                        //TODO: If possible do 1 more stage
+                        //Send agree message to retailer
+                        ACLMessage reply = bestOffer.createReply();
+                        reply.setPerformative(ACLMessage.AGREE);
+                        reply.setContent(""+bestPrice);
+                        
+                        //Finish negotiation
 						System.out.println("  --------- Finished ---------\n");
 						printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
 					}
 				}
 			}
-		}; // end counter behaviour
-		seq.addSubBehaviour(counterOfferBehaviour);
+		}); // end counter behaviour
 
-        //Get decision from retailers
+        /** 4TH --- Final decision 
         // have 3s before timeout
-        seq.addSubBehaviour( new MyReceiverBehaviour( this, 3000,
+        retailerSeQue.addSubBehaviour( new MyReceiverBehaviour( this, 3000,
                 null) 
 				{
 					public void handle( ACLMessage message) 
 					{  
 						if (message != null ) {
+                            System.out.println("");
+                            System.out.println("4TH");
 							System.out.println("Got " + 
 								ACLMessage.getPerformative(message.getPerformative() ) +
 								" from " + message.getSender().getLocalName());
@@ -287,12 +471,12 @@ public class HomeAgent extends Agent implements GUIListener
 							if( message.getPerformative() == ACLMessage.AGREE){
                                 System.out.println("Proposal Accepted");
                                 System.out.println("Proposal Offer: $"+ negoBestPrice);
-                                printGUI(getLocalName() + " accepted the offer for " + negoBestPrice);
+                                printGUI(getLocalName() + " accepted the offer for $" + negoBestPrice);
                             }
 							else{//Refuse the proposal
                                 System.out.println("Propsal Refused");
                                 System.out.println("Original Offer: $"+bestPrice);
-                                printGUI(getLocalName() + " reject the offer for " + negoBestPrice);
+                                printGUI(getLocalName() + " reject the offer for $" + negoBestPrice);
                             }
 							System.out.println("  --------- Finished ---------\n");
 							printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
@@ -302,8 +486,8 @@ public class HomeAgent extends Agent implements GUIListener
 							//setup();//loop ultil get the order
 						}
 					}	
-				});
-        send(message);
+				});*/
+        
     }
 
     /**
@@ -328,7 +512,7 @@ public class HomeAgent extends Agent implements GUIListener
      * Test and remove old duplicate DF entries before add new one
      * @param sd
      */
-    void register(ServiceDescription sd)
+    private void register(ServiceDescription sd)
     {
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
@@ -345,8 +529,13 @@ public class HomeAgent extends Agent implements GUIListener
         }
     }
 
-    //Search service from DF
-    AID[] getRetailerAgents(String serviceType)
+    //
+    /**
+     * Search service from DF
+     * @param serviceType
+     * @return list of agents
+     */
+    private AID[] getAgentList(String serviceType)
     {
         DFAgentDescription dfd = new DFAgentDescription();
         ServiceDescription sd = new ServiceDescription();
@@ -354,7 +543,7 @@ public class HomeAgent extends Agent implements GUIListener
         dfd.addServices(sd);
 
         SearchConstraints ALL = new SearchConstraints();
-        ALL.setMaxDepth(new Long(0));//what the hell is it
+        ALL.setMaxDepth(new Long(0));
 
         try {
             DFAgentDescription[] result = DFService.search(this, dfd);
@@ -370,78 +559,7 @@ public class HomeAgent extends Agent implements GUIListener
 
 
     /* --- Jade Agent behaviour classes --- */
-    /**
-     * Receive demand from Appliances
-     */
-    private class ReceiveDemandBehaviour extends CyclicBehaviour{
-        public void action(){
-            System.out.println(getLocalName() + ": waiting for demand from Applicant Agents");
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-            ACLMessage msg = receive(mt);
-            if(msg!= null){
-                String demand, receiver, sender;
-                
-                demand = msg.getContent();
-                receiver = getLocalName();
-                sender = msg.getSender().getLocalName();
-
-                //Print message content
-                System.out.println(receiver + ": received response " + demand + " from " + sender);
-                totalEnergyConsumption += Float.parseFloat(demand);
-                System.out.println("Total consumption: " + totalEnergyConsumption);
-                System.out.println("**********************************************");
-            }
-            //Continue listening
-            block();
-        }
-    }
-    //TODO: start from here
-    /**
-     * Negotitate with Retailer Agents
-     */
-    private class negotiateContractBehaviour extends CyclicBehaviour{
-        public void action(){
-            System.out.println(getLocalName() + ": begin negotiate with Retailer Agents ");
-            ACLMessage msg = receive();
-
-            if(msg != null){
-                //get sender information
-                String offer, receiver, sender;
-                
-                offer = msg.getContent();
-                receiver = getLocalName();
-                sender = msg.getSender().getLocalName();
-
-                System.out.println(receiver + ": received response " + offer + " from " + sender);
-                
-            }
-            //Continue listening 
-            block();
-        }
-    }
-
-    /**
-     * Test Behaviour
-     */
-
-    private class TestBehaviour extends OneShotBehaviour
-    {
-        public void action(){
-            AID[] aids = getRetailerAgents("Retailer");
-            System.out.println("Retailer agents total number:" + aids.length);
-            for(AID aid : aids){
-                System.out.println(aid.getLocalName());
-                System.out.println("----------------------------------------");
-            
-                //Send message
-                ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-                msg.addReceiver(aid);
-                msg.setContent("Hello");
-                myAgent.send(msg);
-            }
-        }
-    }
-
+    
 
     //Declare ReiverBehaviour - this behaviour controls the characteristic of behaviour as well as it life time
     private class MyReceiverBehaviour extends SimpleBehaviour
@@ -513,38 +631,7 @@ public class HomeAgent extends Agent implements GUIListener
         }
     }
 
-    //This method is used for delay when the behaviour STARTs
-    private class DelayBehaviour extends SimpleBehaviour 
-    {
-        private long    timeout, 
-                        wakeupTime;
-        private boolean finished = false;
-        
-        public DelayBehaviour(Agent a, long timeout) {
-            super(a);
-            this.timeout = timeout;
-        }
-        
-        public void onStart() {
-            wakeupTime = System.currentTimeMillis() + timeout;
-        }
-            
-        public void action() 
-        {
-            long dt = wakeupTime - System.currentTimeMillis();
-            if (dt <= 0) {
-                finished = true;
-                handleElapsedTimeout();
-            } else 
-                block(dt);
-                
-        } //end of action
-        
-        protected void handleElapsedTimeout() // by default do nothing !
-            { } 
-                    
-        public boolean done() { return finished; }
-    }
+    
 
     /* --- GUI --- */
     // Tola : add GUI
@@ -553,7 +640,7 @@ public class HomeAgent extends Agent implements GUIListener
 		HomeGUI gui = new HomeGUI(this);
 		gui.showGUI();
 	}
-	
+    
     
 	private void printGUI(String text) {
 		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
@@ -561,20 +648,34 @@ public class HomeAgent extends Agent implements GUIListener
 		msg.setContent("<font color='blue'>" + text + "</font>");
 		send(msg);
 	}
-    
+	private void printGUIClean() {
+		ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
+		msg.addReceiver(new AID(PrintAgent.AGENT_NAME, AID.ISLOCALNAME ));
+		msg.setContent("");
+		send(msg);
+	}
 
     /* --- Utility methods --- */
     protected static int cidCnt = 0;
     String cidBase;
 
-    //This method is used to extract the consumption based on the total demand
-    private double extractToBestPrice(double demand, double duartion){
+    /**
+     * This method is used to extract the consumption based on the total demand
+     * @param demand 
+     * @param duartion
+     * @return
+     */
+    private double extractToBestPrice(double demand, double budget){
         double bestPrice;
-        bestPrice = demand / duartion;
+        bestPrice = budget / demand;
         return bestPrice;
     }
 
-    //This method is used to generate unique ID for each conversations
+
+    /**
+     * This method is used to generate unique ID for each conversations
+     * @return
+     */
     private String generateCID()
     {
         if(cidBase==null){
@@ -583,13 +684,22 @@ public class HomeAgent extends Agent implements GUIListener
         return cidBase + (cidCnt++);
     }
 
-    //This method is used to generate unique Random generator
+    /**
+     * This method is used to generate unique Random generator
+     * @return
+     */
     private Random newRandom()
     {
         return new Random(hashCode() + System.currentTimeMillis());
     }
 
-    //This method is used to initialize ACLMessages
+    /**
+     * This method is used to initialize ACLMessages
+     * @param perf perfomative (Ex: AGREE, PROPOSAL, REQUEST)
+     * @param content
+     * @param destination
+     * @return
+     */
     private ACLMessage newMessage(int perf, String content, AID destination)
     {
         ACLMessage message = newMessage(perf);
@@ -599,6 +709,12 @@ public class HomeAgent extends Agent implements GUIListener
         message.setContent(content);
         return message;
     }
+    
+    /**
+     * 
+     * @param perf
+     * @return
+     */
     private ACLMessage newMessage(int perf)
     {
         ACLMessage message = new ACLMessage(perf);
@@ -606,13 +722,26 @@ public class HomeAgent extends Agent implements GUIListener
         return message;
     }
     
+    /**
+     * Get a random number between two numbers
+     * @param min
+     * @param max
+     * @return random number 
+     */
     public double getRandomDouble(double min, double max){
 	    double d = (Math.random()*((max-min)+1))+min;
 	    return Math.round(d*100.0)/100.0;
 	}
     
+    /**
+     * 
+     * @param value
+     * @return round to 2 decimal numbers
+     */
     private double truncatedDouble(double value) {
 		return java.math.BigDecimal.valueOf(value).setScale(3, java.math.RoundingMode.HALF_UP).doubleValue();
 	}
+ 
+    
     
 }

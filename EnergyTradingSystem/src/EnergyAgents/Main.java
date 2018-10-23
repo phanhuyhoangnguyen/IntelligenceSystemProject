@@ -30,30 +30,34 @@ public class Main {
 		// Create Print GUI
 		createPrintAgent();
 		
-		// Create retailer agents
+		// Create Retailer agents
+		try {
+			Thread.sleep(200);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		List<AgentController> retailerAgents = createRetailerAgents();
 		
+		
+		// Create appliance agents
 		try {
-			Thread.sleep(300);
+			Thread.sleep(200);
 		} catch (InterruptedException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+		List<AgentController> applianceAgents = createApplianceAgents();
 		
-		//start home agent
+		//Create home agent
+		try {
+			Thread.sleep(200);
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		AgentController homeAgent = createHomeAgent();
 		
-		try {
-			Thread.sleep(300);
-		} catch (InterruptedException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		
-		// Create retailer Test agent
-		//createRetailerTest();
-		
-		List<AgentController> applianceAgents = createApplianceAgents();
 		
 		// Start Main GUI
 		EventQueue.invokeLater(new Runnable() {
@@ -102,11 +106,11 @@ public class Main {
 		
 		// create agents
 		List<AgentController> applianceAgents= new ArrayList<>();
-		applianceAgents.add( JadeController.createAgent("Solar", "EnergyAgents.ApplianceAgent", applianceContainer) );
-		applianceAgents.add( JadeController.createAgent("TV", "EnergyAgents.ApplianceAgent", applianceContainer) );
-		applianceAgents.add( JadeController.createAgent("PC", "EnergyAgents.ApplianceAgent", applianceContainer) );
-		applianceAgents.add( JadeController.createAgent("AirCon", "EnergyAgents.ApplianceAgent", applianceContainer) );
-		applianceAgents.add( JadeController.createAgent("Microwave", "EnergyAgents.ApplianceAgent", applianceContainer) );
+		applianceAgents.add( JadeController.createAgent("Cloth Washer", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","CWE"}) );
+		applianceAgents.add( JadeController.createAgent("Dishwasher", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","DWE"}) );
+		applianceAgents.add( JadeController.createAgent("Force Air Energy", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","FRE"}) );
+		applianceAgents.add( JadeController.createAgent("Fridge Energy", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","FGE"}) );
+		applianceAgents.add( JadeController.createAgent("Ultility Energy", "EnergyAgents.ApplianceAgent", applianceContainer, new Object[]{"Appliance","UTE"}) );
 		
 		return applianceAgents;
 	}
@@ -119,7 +123,7 @@ public class Main {
 			// Create container for the home agent
 			ContainerController homeContainer = JadeController.createContainer("Home-Container");
 
-			AgentController homeAgent = JadeController.createAgent("Home Agent", "EnergyAgents.HomeAgent", homeContainer);
+			AgentController homeAgent = JadeController.createAgent("Home", "EnergyAgents.HomeAgent", homeContainer);
 			
 			return homeAgent;
 	}
