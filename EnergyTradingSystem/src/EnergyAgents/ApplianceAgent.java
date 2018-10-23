@@ -47,7 +47,8 @@ public class ApplianceAgent extends Agent {
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
 	private static final int USAGE_DURATION = 5000;					// 30 mins -> specify the total usage of agent in a period of time, 30 mins.
-	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
@@ -99,6 +100,8 @@ public class ApplianceAgent extends Agent {
 			String predictionUsage;
 			
 			double predictedValue = predictUsage();
+			
+			System.out.println("Predict Usage: "+ predictUsage());
 			
 			// round up the double value to 2 decimal places
 			DecimalFormat df = new DecimalFormat("#.##");
@@ -210,7 +213,6 @@ public class ApplianceAgent extends Agent {
 		double predictUsage = 0;
         double average = 0;
         double sum = 0.0;
- 	   
 		File file = new File(pathToCSV);
 		if(file.exists()) {
 		    try {
@@ -229,7 +231,6 @@ public class ApplianceAgent extends Agent {
 		        for (int i = 0; i < noOfRowsToRead; i++) {
 		        	// Each line is read as 1 array
 		        	nextRecord = csvReader.readNext();
-		        	
 		        	sum += Double.parseDouble(nextRecord[dataIndex]);
 		        }
 		        
@@ -241,6 +242,8 @@ public class ApplianceAgent extends Agent {
 		    } catch (Exception e) {
 		    	e.printStackTrace();
 		    }
+		}else{
+			System.out.println("Cannot read the file");
 		}
 		return predictUsage;
     }
