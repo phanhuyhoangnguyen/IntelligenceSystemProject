@@ -3,38 +3,27 @@ package EnergyAgents;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.FSMBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.SequentialBehaviour;
-import jade.core.behaviours.TickerBehaviour;
-import jade.domain.AMSService;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPANames;
-import jade.domain.FIPAAgentManagement.AMSAgentDescription;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
-import jade.domain.FIPAAgentManagement.SearchConstraints;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 import jade.proto.AchieveREInitiator;
 
 import java.io.File;
 import java.io.FileReader;
-import java.net.URL;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;  
+import java.text.DecimalFormat; 
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Vector;
 
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
-
-import database.DbHelper;
 
 /**
  * ApplianceAgent
@@ -47,12 +36,13 @@ public class ApplianceAgent extends Agent {
 	private String serviceType;
 	
 	// For Message Communication to HomeAgent
-	private static final int UPATE_DURATION = 5000;				// 10s -> specify the frequency of message sent to Home Agent. 
+	// TODO: change this later
+	private static final int UPATE_DURATION = 5000;					// 10s -> specify the frequency of message sent to Home Agent. 
 																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
 	// For energyUsage Stimulation
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
-	private static final int USAGE_DURATION = 5000;				// 30 mins -> specify the total usage of agent in a period of time, 30 mins.
+	private static final int USAGE_DURATION = 5000;					// 30 mins -> specify the total usage of agent in a period of time, 30 mins.
 	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	
 	// For prediction
@@ -64,15 +54,10 @@ public class ApplianceAgent extends Agent {
 	private static final String HomeAgentService = "Home";
 	private boolean isDone = false;
 	
-	// For FSM
-	// State names
-	private static final String STATE_1 = "ReportingPrediction";
-	private static final String STATE_2 = "ReportingActualUsage";
-	
 	public ApplianceAgent () {
 		
 		// this is set for skipping the first row in CSV file below
-		this.actualLivedSeconds = 1000;				//TODO: check if this should be changed to startTime and endTime
+		this.actualLivedSeconds = 1000;
 		intializeAppliantDictionary();
 	}
 
@@ -93,15 +78,14 @@ public class ApplianceAgent extends Agent {
 	    
 	            protected void handleElapsedTimeout() {
 	            	
-		            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
-		    	        isDone = true;
-		    	        // Register state Predicting and Request to buy
-		            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
-		    	        // Register state Reporting Actual Usage
-		            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
-		    	        
-		    	        addBehaviour(communicationSequence);
-	            	
+	            	SequentialBehaviour communicationSequence = new SequentialBehaviour();
+	    	        isDone = true;			// TODO: check and delete if this is no longer used
+	    	        // Register state Predicting and Request to buy
+	            	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+	    	        // Register state Reporting Actual Usage
+	            	//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+	    	        
+	    	        addBehaviour(communicationSequence);
 	            }
 	        };
 	        
@@ -144,12 +128,14 @@ public class ApplianceAgent extends Agent {
     	public void action() {
 			String predictionUsage;
 			
-			// TODO @Dave: this one returns null value
-    		// predictionUsage = predictUsage();
+			double predictedValue = predictUsage();
 			
-			// * @Dave: set a dummy value, delete after fixing the above
-			predictionUsage = "5";
+			// round up the double value to 2 decimal places
+			DecimalFormat df = new DecimalFormat("#.##");
+			predictionUsage = df.format(predictedValue);
 			
+	        System.out.println("prediction: " + predictionUsage);
+	        
         	// Send request to HomeAgent
             sendRequestBuyingEnergyToHome(predictionUsage); 
     	}
@@ -196,9 +182,10 @@ public class ApplianceAgent extends Agent {
 	    // send message
 	    send(msg);
     }
+    
 	// TODO check this
 	private void sendRequestBuyingEnergyToHome(String predictionUsage) {
-		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+		ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
     	msg.addReceiver(getHomeAgent());								// this.homeAgent
         // Set the interaction protocol
     	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
@@ -219,12 +206,15 @@ public class ApplianceAgent extends Agent {
     
     		// Method to handle an inform message from Home Agent after its negotiation with Retailer is success
 	        protected void handleInform(ACLMessage inform) {
-	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + " negotiate successful. Appliance's request is fulfiled");
+	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + " has negotiated successful with Retailer Agent. Appliance's request is fulfiled");
+	        	System.out.println(getLocalName() + ": " + inform.getSender().getName() + "'s offer is " + inform.getContent());
 	        }
 	
 	        // Method to handle a refuse message from responder
 	        protected void handleRefuse(ACLMessage refuse) {
-	        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " negotiate failed. Appliance's request is not met");
+	        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to buy energy. Appliance's request is not met");
+	        	// TODO: uncomment this to check if Appliance is able to send request again
+	        	// addBehaviour(new reportingEnergyUsagePrediction());
 	        }
 	
 	        // Method to handle a failure message (failure in delivering the message)
@@ -245,12 +235,13 @@ public class ApplianceAgent extends Agent {
 	    });
 	}
 	
-	protected String predictUsage() {
+	protected double predictUsage() {
+		// get the data for the Appliance Agent from CSV file based on the index column
 		int dataIndex = applicantDict.get(this.applianceName.toUpperCase());
 		
-		String predictUsage;
-
+		double predictUsage = 0;
         double average = 0;
+        double sum = 0.0;
  	   
 		File file = new File(pathToCSV);
 		if(file.exists()) {
@@ -264,28 +255,25 @@ public class ApplianceAgent extends Agent {
 		                                  .build();
 		        String[] nextRecord;
 		        
-		        // Each row is for 30 min -> if timeDuration is 30 mins then 1 rows will be read
-		         int noOfRowsToRead = LIVED_DAYS * secondsInADay;
-		        //int noOfRowsToRead = 10;							// TODO: for testing, deleted later
-		        
-		        double sum = 0.0;
+		        // Each row is for 30 min (1800s) -> if timeDuration is 30 mins (1800s) then 1 rows will be read
+		        int noOfRowsToRead = (LIVED_DAYS * secondsInADay)/1800;
 		        
 		        for (int i = 0; i < noOfRowsToRead; i++) {
 		        	// Each line is read as 1 array
 		        	nextRecord = csvReader.readNext();
 		        	
-		        	sum += Double.parseDouble(nextRecord[dataIndex]);	        	
+		        	sum += Double.parseDouble(nextRecord[dataIndex]);
 		        }
 		        
 		        average = sum/noOfRowsToRead;
-		        System.out.println("prediction: " + average);
+		        
+		        // predicted value is the average calculated from the values in CSV file
+		        predictUsage = average;
 		        
 		    } catch (Exception e) {
 		    	e.printStackTrace();
 		    }
 		}
-		// TODO: for testing, delete later
-		predictUsage = Double.toString(average);
 		return predictUsage;
     }
 
@@ -336,6 +324,7 @@ public class ApplianceAgent extends Agent {
     }
 
 
+    // TODO: check if this is no longer neccessary, will be deleted
 	private class msgReceivingBehaviour extends CyclicBehaviour {
 
 		@Override
@@ -427,10 +416,6 @@ public class ApplianceAgent extends Agent {
 		setActualLivedSeconds(getActualLivedSeconds() + timeDuration);
 		
 		return totalUsage;
-	}
-	
-	public String estimateElectricity() {
-		return "";
 	}
 	
 	private void intializeAppliantDictionary() {
