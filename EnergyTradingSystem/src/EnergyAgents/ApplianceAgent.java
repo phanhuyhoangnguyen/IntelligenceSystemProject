@@ -48,8 +48,8 @@ public class ApplianceAgent extends Agent {
 	private static int actualLivedSeconds;							// number of seconds agents have lived since created
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
-	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	private static final int HALF_HOUR = 1800000;
+	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
@@ -101,6 +101,8 @@ public class ApplianceAgent extends Agent {
 			String predictionUsage;
 			
 			double predictedValue = predictUsage(USAGE_DURATION);
+			
+			System.out.println("Predict Usage: "+ predictUsage());
 			
 			// round up the double value to 2 decimal places
 			DecimalFormat df = new DecimalFormat("#.##");
