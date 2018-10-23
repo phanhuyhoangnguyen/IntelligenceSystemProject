@@ -73,6 +73,7 @@ public class ApplianceAgent extends Agent {
 	        this.serviceType = args[0].toString();
 	        System.out.println("Appliance Agent: " + getLocalName() + " is created!");
 	        
+	        SequentialBehaviour sb = new SequentialBehaviour();
 	        addBehaviour(new WaitForStart());
 	        
 	        registerService registerService = new registerService();
