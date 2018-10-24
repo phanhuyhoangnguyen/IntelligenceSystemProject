@@ -138,7 +138,6 @@ public class ApplianceAgent extends Agent {
         return null;
 	}
     
-    
     /**
 	 * Implement Cyclic behaviour
 	 * waiting for start inform
@@ -177,15 +176,13 @@ public class ApplianceAgent extends Agent {
 		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction());
 			        // Register state Reporting Actual Usage
 		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
-			        
-		    		// Message template for AchieveREResponder
-					MessageTemplate template = MessageTemplate.and(
-							MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST),
-							MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
-
+		        	
+		        	// Only listen to Home Agent with Inform message
+		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),
+		        			MessageTemplate.MatchSender(getHomeAgent()));
 
 					// Create behaviour that receives messages
-		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent()));
+		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
 		        	
 			        addBehaviour(communicationSequence);
             	}
@@ -425,8 +422,11 @@ public class ApplianceAgent extends Agent {
 	 */
 	private class ResultReceiver extends CyclicBehaviour {
 
-		public ResultReceiver(Agent a) {
+		private MessageTemplate msgTemplate;
+		
+		public ResultReceiver(Agent a, MessageTemplate msgTemplate) {
 			super (a);
+			this.msgTemplate = msgTemplate;
 		}
 		
 		@Override
@@ -434,7 +434,7 @@ public class ApplianceAgent extends Agent {
 			System.out.println(getLocalName() + ": Waiting for message");
 
 			// Retrieve message from message queue if there is
-	        ACLMessage msg= receive();
+	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
 		        // Print out message content
 		        System.out.println(getLocalName()+ ": Received response " + msg.getContent() + " from " + msg.getSender().getLocalName());
