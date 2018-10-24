@@ -10,9 +10,14 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPANames;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.FailureException;
+import jade.domain.FIPAAgentManagement.NotUnderstoodException;
+import jade.domain.FIPAAgentManagement.RefuseException;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
+import jade.lang.acl.MessageTemplate;
 import jade.proto.AchieveREInitiator;
+import jade.proto.AchieveREResponder;
 
 import java.io.File;
 import java.io.FileReader;
@@ -89,9 +94,129 @@ public class ApplianceAgent extends Agent {
 			System.out.println(getLocalName() + ": " + "You have not specified any arguments.");
 		}
     }
+	
+	private void register(ServiceDescription sd) {
+		DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
+	    dfd.addServices(sd); // An agent can register one or more services
+	    
+	    try {
+            // Search for the old DFD and deregister it
+            DFAgentDescription list[] = DFService.search( this, dfd );
+            if ( list.length>0 ) 
+            	DFService.deregister(this);
+            
+            // Add this Service Description to DFAgentDescription
+            dfd.addServices(sd);
+
+            // Register Agent's Service with DF
+            DFService.register(this, dfd);
+        }
+
+	    catch (FIPAException fe) { fe.printStackTrace(); } 
+	}
+	
+	/**
+	 *  Find and return Agent from its service
+	 */
+    private DFAgentDescription[] getService(String service) {
+		DFAgentDescription dfd = new DFAgentDescription();
+		
+    	// Create service template for search
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType(service);
+
+        // Add Service Template to DFAgentDescription 
+        dfd.addServices(sd);
+
+        // Search Agent with the target services using DF
+        try {
+                DFAgentDescription[] result = DFService.search(this, dfd);
+                return result;
+        }
+        catch (Exception fe) {}
+        return null;
+	}
+    
+    /**
+	 * Implement Cyclic behaviour
+	 * waiting for start inform
+	 */
+	private class WaitForStart extends CyclicBehaviour{
+		@Override
+		public void action() {
+			ACLMessage msg = myAgent.receive();
+			if (msg != null) {
+				if (msg.getPerformative() == ACLMessage.INFORM && msg.getContent().compareToIgnoreCase("start") == 0 ) {
+					printGUIClean();
+					//System.out.println("<font color='gray'> Start negotiation</font>");
+					startNegotiation();
+				}
+			} else {
+				block();
+			}
+		}
+	}
+	
+	/**
+	 * Start negotiation
+	 */
+	private void startNegotiation() {
+		SequentialBehaviour sb = new SequentialBehaviour();
+        
+        SearchHomeAgent searchHomeAgent = new SearchHomeAgent();
+        
+        // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
+        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
+    
+            protected void onTick() {
+            	if (isFinishedNegotiated) {
+		        	SequentialBehaviour communicationSequence = new SequentialBehaviour();
+			        // Register state Predicting and Request to buy
+		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction());
+			        // Register state Reporting Actual Usage
+		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
+		        	
+		        	// Only listen to Home Agent with Inform message
+		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),
+		        			MessageTemplate.MatchSender(getHomeAgent()));
+
+					// Create behaviour that receives messages
+		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
+		        	
+			        addBehaviour(communicationSequence);
+            	}
+            }
+		};
+		
+		/*//TODO : @DAVE This code below is for testing (run only 1)
+		// Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
+		DelayBehaviour communicateToHome = new DelayBehaviour(this, 3000) {
+			protected void handleElapsedTimeout() {
+				if (true) {
+					SequentialBehaviour communicationSequence = new SequentialBehaviour();
+					// Register state Predicting and Request to buy
+					communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+					// Register state Reporting Actual Usage
+					//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+					
+					addBehaviour(communicationSequence);
+				}
+			}
+		};*/
+        
+        // Trigger service to find home agent
+        sb.addSubBehaviour(searchHomeAgent);	 
+        
+        // Sending message every 5 seconds
+        sb.addSubBehaviour(communicateToHome);
+        
+        // add sequential behaviour to the Agent
+        addBehaviour(sb);
+	}
     
     // This behaviour search for home agent
-    private class searchHomeAgent extends OneShotBehaviour {
+    private class SearchHomeAgent extends OneShotBehaviour {
     	public void action() {
     		// Search for home agent
     		setHomeAgent(searchForHomeAgent(HomeAgentService));
@@ -99,11 +224,11 @@ public class ApplianceAgent extends Agent {
     }
     
     // This behaviour search for home agent
-    private class reportingEnergyUsagePrediction extends OneShotBehaviour {
+    private class SendEnergyUsagePrediction extends OneShotBehaviour {
     	public void action() {
 			String predictionUsage;
 			
-			double predictedValue = predictUsage(USAGE_DURATION);
+			double predictedValue = getUsagePrediction(USAGE_DURATION);
 			
 			// round up the double value to 2 decimal places
 			DecimalFormat df = new DecimalFormat("#.##");
@@ -116,23 +241,8 @@ public class ApplianceAgent extends Agent {
     	}
     }
     
-    private void reportEnergyUsagePrediction() {
-		String predictionUsage;
-		
-		double predictedValue = predictUsage(USAGE_DURATION);
-		
-		// round up the double value to 2 decimal places
-		DecimalFormat df = new DecimalFormat("#.##");
-		predictionUsage = df.format(predictedValue);
-		
-        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
-        
-    	// Send request to HomeAgent
-        sendRequestBuyingEnergyToHome(predictionUsage); 
-    }
-    
     // This behaviour send actual energy usage to home
-    private class reportingActualEnergyUsage extends OneShotBehaviour {
+    private class ReportingActualEnergyUsage extends OneShotBehaviour {
     	public void action() {
         	// this is only trigger when the stage 1 is completed
         	sendActualUsage();
@@ -223,98 +333,11 @@ public class ApplianceAgent extends Agent {
 	        }
 	    });
 	}
-
-	private void register(ServiceDescription sd) {
-		DFAgentDescription dfd = new DFAgentDescription();
-        dfd.setName(getAID());
-	    dfd.addServices(sd); // An agent can register one or more services
-	    
-	    try {
-            // Search for the old DFD and deregister it
-            DFAgentDescription list[] = DFService.search( this, dfd );
-            if ( list.length>0 ) 
-            	DFService.deregister(this);
-            
-            // Add this Service Description to DFAgentDescription
-            dfd.addServices(sd);
-
-            // Register Agent's Service with DF
-            DFService.register(this, dfd);
-        }
-
-	    catch (FIPAException fe) { fe.printStackTrace(); } 
-	}
-	
-	/**
-	 *  Find and return Agent from its service
-	 */
-    private DFAgentDescription[] getService(String service) {
-		DFAgentDescription dfd = new DFAgentDescription();
-		
-    	// Create service template for search
-        ServiceDescription sd = new ServiceDescription();
-        sd.setType(service);
-
-        // Add Service Template to DFAgentDescription 
-        dfd.addServices(sd);
-
-        // Search Agent with the target services using DF
-        try {
-                DFAgentDescription[] result = DFService.search(this, dfd);
-                return result;
-        }
-        catch (Exception fe) {}
-        return null;
-	}
-	
-	/**
-	 *  Method to de register the service (on take down)
-	 */
-    protected void takeDown() {
-    	try { DFService.deregister(this); }
-    	catch (Exception e) {}
-    }
-	
-	protected ApplianceAgent getApplianceAgent() {
-		return this;
-	}
-	
-	protected void setApplianceName(String applianceName) {
-		this.applianceName = applianceName;
-	}
-	
-	public String getApplianceName() {
-		return this.applianceName;
-	}
-	
-	protected void setServiceType (String serviceType) {
-		this.serviceType = serviceType;
-	}
-	
-	public String getServiceType() {
-		return this.serviceType;
-	}
-	
-	private void setActualLivedSeconds(int actualLivedSeconds) {
-		this.actualLivedSeconds = actualLivedSeconds;
-	}
-	
-	private int getActualLivedSeconds() {
-		return this.actualLivedSeconds;
-	}
-	
-	private void setHomeAgent(AID homeAgent) {
-		this.homeAgent = homeAgent;
-	}
-	
-	private AID getHomeAgent() {
-		return this.homeAgent;
-	}
 	
 	/**
 	 *  Energy Consumption Prediction - Naive Prediction with the data from CSV file
 	 */
-	protected double predictUsage(int duration) {
+	protected double getUsagePrediction(int duration) {
 		// get the data for the Appliance Agent from CSV file based on the index column
 		int dataIndex = applicantDict.get(this.applianceName.toUpperCase());
 		
@@ -395,6 +418,34 @@ public class ApplianceAgent extends Agent {
 	}
 	
 	/**
+	 *  ResultReceiver Behavior - Receiving Home Agent Message Inform Negotiation result of it and Retailer Agent
+	 */
+	private class ResultReceiver extends CyclicBehaviour {
+
+		private MessageTemplate msgTemplate;
+		
+		public ResultReceiver(Agent a, MessageTemplate msgTemplate) {
+			super (a);
+			this.msgTemplate = msgTemplate;
+		}
+		
+		@Override
+		public void action() {
+			System.out.println(getLocalName() + ": Waiting for message");
+
+			// Retrieve message from message queue if there is
+	        ACLMessage msg= receive(this.msgTemplate);
+	        if (msg!=null) {
+		        // Print out message content
+		        System.out.println(getLocalName()+ ": Received response " + msg.getContent() + " from " + msg.getSender().getLocalName());
+	       }
+	    
+	        // Block the behaviour from terminating and keep listening to the message
+	        block();
+	    }
+	}
+	
+	/**
 	 * Initialize the map which Appliance's Name and its address in CSV file
 	 */
 	private void intializeAppliantDictionary() {
@@ -424,6 +475,7 @@ public class ApplianceAgent extends Agent {
 		applicantDict.put("UNE", 24);
 	}
 	
+	
 	/**
 	 * Print to GUI agent
 	 * @param text
@@ -434,6 +486,7 @@ public class ApplianceAgent extends Agent {
 		msg.setContent("<font color='red'>" + text + "</font>");
 		send(msg);
 	}
+	
 	private void printGUIClean() {
 		ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
 		msg.addReceiver(new AID(PrintAgent.AGENT_NAME, AID.ISLOCALNAME ));
@@ -442,71 +495,49 @@ public class ApplianceAgent extends Agent {
 	}
 	
 	/**
-	 * Implement Cyclic behaviour
-	 * waiting for start inform
+	 *  Method to de register the service (on take down)
 	 */
-	private class WaitForStart extends CyclicBehaviour{
-		@Override
-		public void action() {
-			ACLMessage msg = myAgent.receive();
-			if (msg != null) {
-				if (msg.getPerformative() == ACLMessage.INFORM && msg.getContent().compareToIgnoreCase("start") == 0 ) {
-					printGUIClean();
-					//System.out.println("<font color='gray'> Start negotiation</font>");
-					startNegotiation();
-				}
-			} else {
-				block();
-			}
-		}
-	} // end wait for start
-	
-	/**
-	 * Start negotiation
-	 */
-	private void startNegotiation() {
-		SequentialBehaviour sb = new SequentialBehaviour();
-        
-        searchHomeAgent searchHomeAgent = new searchHomeAgent();
-        /*
-        // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
-        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
+    protected void takeDown() {
+    	try { DFService.deregister(this); }
+    	catch (Exception e) {}
+    }
     
-            protected void onTick() {
-            	if (isFinishedNegotiated) {
-		        	SequentialBehaviour communicationSequence = new SequentialBehaviour();
-			        // Register state Predicting and Request to buy
-		        	communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
-			        // Register state Reporting Actual Usage
-		        	communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
-			        
-			        addBehaviour(communicationSequence);
-            	}
-            }
-		};*/
-		//TODO : @DAVE This code below is for testing (run only 1)
-		// Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
-		DelayBehaviour communicateToHome = new DelayBehaviour(this, 3000) {
-			protected void handleElapsedTimeout() {
-				if (true) {
-					SequentialBehaviour communicationSequence = new SequentialBehaviour();
-					// Register state Predicting and Request to buy
-					communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
-					// Register state Reporting Actual Usage
-					//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
-					
-					addBehaviour(communicationSequence);
-				}
-			}
-		};
-        
-        // Trigger service to find home agent
-        sb.addSubBehaviour(searchHomeAgent);	 
-        
-        // Sending message every 5 seconds
-        sb.addSubBehaviour(communicateToHome);
-        
-        // add sequential behaviour to the Agent
-        addBehaviour(sb);
-	} // end start negotiation
+	/**
+	 *  Getter(s) and Setter(s) of Agent
+	 */
+	protected ApplianceAgent getApplianceAgent() {
+		return this;
+	}
+	
+	protected void setApplianceName(String applianceName) {
+		this.applianceName = applianceName;
+	}
+	
+	public String getApplianceName() {
+		return this.applianceName;
+	}
+	
+	protected void setServiceType (String serviceType) {
+		this.serviceType = serviceType;
+	}
+	
+	public String getServiceType() {
+		return this.serviceType;
+	}
+	
+	private void setActualLivedSeconds(int actualLivedSeconds) {
+		this.actualLivedSeconds = actualLivedSeconds;
+	}
+	
+	private int getActualLivedSeconds() {
+		return this.actualLivedSeconds;
+	}
+	
+	private void setHomeAgent(AID homeAgent) {
+		this.homeAgent = homeAgent;
+	}
+	
+	private AID getHomeAgent() {
+		return this.homeAgent;
+	}
 }
