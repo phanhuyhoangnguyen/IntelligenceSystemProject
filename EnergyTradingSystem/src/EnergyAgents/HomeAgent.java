@@ -9,6 +9,7 @@ import jade.lang.acl.MessageTemplate;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.*;
 import jade.domain.FIPAException;
+import jade.proto.AchieveREInitiator;
 import jade.proto.AchieveREResponder;
 import jade.domain.FIPANames;
 
@@ -36,13 +37,13 @@ public class HomeAgent extends Agent implements GUIListener
     private String agentType;
 
     //Total energy consumption get from appliance agent
-    private float totalEnergyConsumption;
+    private float totalPredictedEnergyConsumption;
     private int applianceCount;
     private int totalAppliances;
 
     //The budget is set by user
     private double budgetLimit;
-    private double idealBudgetLimit;
+    private double idealBestPrice;
     private double bestPrice;
     private double negoBestPrice;
 
@@ -65,10 +66,10 @@ public class HomeAgent extends Agent implements GUIListener
      */
     private void init()
     {
-        this.totalEnergyConsumption = 0;
+        this.totalPredictedEnergyConsumption = 0;
         this.applianceCount = 0;
-        this.budgetLimit = getRandomDouble(30, 50);
-        this.idealBudgetLimit = truncatedDouble( this.budgetLimit * 0.7); // 70% of the budget
+        this.budgetLimit = getRandomDouble(3000, 5000);
+        //this.idealBestPrice = truncatedDouble( this.budgetLimit * 0.7); // 70% of the budget
 
         //Agent name and type
         this.agentName = "Home";
@@ -80,13 +81,13 @@ public class HomeAgent extends Agent implements GUIListener
         //For negotiation
         this.bestOffer = null;
         this.bestPrice = this.budgetLimit;
-        //this.bestPrice = this.budgetLimit / this.totalEnergyConsumption;
+        //this.bestPrice = this.budgetLimit / this.totalPredictedEnergyConsumption;
     }
     
     private void resetDefault() {
-    	this.totalEnergyConsumption = 0;
+    	this.totalPredictedEnergyConsumption = 0;
         this.applianceCount = 0;
-        this.idealBudgetLimit = this.budgetLimit * 0.7; // 70% of the budget
+        //this.idealBestPrice = this.budgetLimit * 0.7; // 70% of the budget
         
         //For negotiation
         this.bestOffer = null;
@@ -109,7 +110,7 @@ public class HomeAgent extends Agent implements GUIListener
     public void setBudgetLimit(double newBudgetLimit)
     {
         this.budgetLimit = newBudgetLimit;
-        this.idealBudgetLimit = truncatedDouble( this.budgetLimit * 0.7); // 70% of the budget
+        //this.idealBestPrice = truncatedDouble( this.budgetLimit * 0.7); // 70% of the budget
     }
      /**
       * End of Getter and Setter
@@ -157,9 +158,13 @@ public class HomeAgent extends Agent implements GUIListener
         //homeSequenceBehaviour.addSubBehaviour(retailerSequenceBehaviour);
         //CommunicateWithRetailer(retailerSequenceBehaviour);
         
+        
+
         addBehaviour(homeSequenceBehaviour);
     }
 
+
+    /* --- Jade Agent behaviour classes --- */
     private class CommunicateWithApplianceBehaviour extends AchieveREResponder{
         public CommunicateWithApplianceBehaviour(Agent a, MessageTemplate mt){
             super(a,mt);
@@ -182,14 +187,14 @@ public class HomeAgent extends Agent implements GUIListener
                 consume = Double.parseDouble(request.getContent());
             }catch( NumberFormatException nfe ) {}
             
-            totalEnergyConsumption += consume;
+            totalPredictedEnergyConsumption += consume;
 
-            System.out.println("Total Demand: " + totalEnergyConsumption);
+            System.out.println("Total Demand: " + totalPredictedEnergyConsumption);
             ++applianceCount;
             System.out.println("Appliance Number: " + applianceCount);
             System.out.println("Appliance length: " + totalAppliances);
 
-            printGUI(getLocalName() +" added <b>" + request.getSender().getLocalName() + "</b>  consumes <b>" + consume + "</b>, Total <b>" + totalEnergyConsumption + "</b>");
+            printGUI(getLocalName() +" added <b>" + request.getSender().getLocalName() + "</b>  consumes <b>" + consume + "</b>, Total <b>" + totalPredictedEnergyConsumption + "</b>");
             
             // Tola: Communicate with the retailer agents if get all the demand
             if ( totalAppliances == applianceCount) {
@@ -228,7 +233,7 @@ public class HomeAgent extends Agent implements GUIListener
                 System.out.println(getLocalName() + ": Action successfully performed, informing initiator");
                 ACLMessage inform = request.createReply();
                 inform.setPerformative(ACLMessage.INFORM);
-                inform.setContent(String.valueOf(Math.random()));
+                inform.setContent("successfully");
                 return inform;
             } else {
                 // Action failed
@@ -238,7 +243,21 @@ public class HomeAgent extends Agent implements GUIListener
         }
     }
     
-    
+    private class SendResultToApplianceBehaviour extends OneShotBehaviour{
+        public void action(){
+            System.out.println("\n**** Send Result ****");
+            System.out.println("Result:"+bestPrice);
+            
+            //Send the result after finishing negotiation
+            AID[] appliances = getAgentList("Appliance");
+            ACLMessage resultMessage = new ACLMessage(ACLMessage.CONFIRM);
+            for(AID appliance: appliances){
+                resultMessage.addReceiver(appliance);
+            }
+            resultMessage.setContent(""+bestPrice);
+            send(resultMessage);
+        }
+    }
     
     /***
      * Communicate with Retailer Agent
@@ -251,15 +270,13 @@ public class HomeAgent extends Agent implements GUIListener
             public void handleElapsedTimeout(){
                 System.out.println("**** NEGOTIATION **** ");
                 System.out.println("Home Budget: "  + budgetLimit);
-                System.out.println("Home Ideal Budget: "  + idealBudgetLimit);
-                System.out.println("Total Consumption: "  + totalEnergyConsumption);
-                System.out.println("Best Price: "  + bestPrice);
+                System.out.println("Total Consumption: "  + totalPredictedEnergyConsumption);
+                
                 System.out.println("");
                 //Print to GUI
                 printGUI("<font color='black'>---- NEGOTIATION ---- </font> ");
                 printGUI("Home Budget: <b>$"  + budgetLimit+"</b>");
-                printGUI("Home Ideal Budget: <b>$"  + idealBudgetLimit+"</b>");
-                printGUI("Total Consumption: <b>"  + totalEnergyConsumption+"</b>");
+                printGUI("Total Consumption: <b>"  + totalPredictedEnergyConsumption+"</b>");
                 printGUI("");
             }
         });
@@ -285,7 +302,7 @@ public class HomeAgent extends Agent implements GUIListener
             messageRetailer.addReceiver(retailer);
             
             // Got 5s to get the receiver the offers before timeout
-            retailerSeQue.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template){
+            retailerSeQue.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template,"1ST"){
                 public void handle(ACLMessage message)
                 {
                     if(message!=null){
@@ -300,6 +317,7 @@ public class HomeAgent extends Agent implements GUIListener
                     		//Compare with budgetLimit
                             if(offer <= bestPrice){
                                 bestPrice = offer;// set new better limit
+                                idealBestPrice = truncatedDouble(bestPrice - 0.15 * bestPrice);
                                 bestOffer = message;
                             }
                     	}catch(NumberFormatException nfe) {
@@ -313,8 +331,8 @@ public class HomeAgent extends Agent implements GUIListener
 
         // Tola: print asking for propose
         printGUI("");
-        printGUI(getLocalName() + " asks for a proposal, total comsuption <b>" + totalEnergyConsumption + "</b>");
-        messageRetailer.setContent(String.valueOf(totalEnergyConsumption));;
+        printGUI(getLocalName() + " asks for a proposal, total comsuption <b>" + totalPredictedEnergyConsumption + "</b>");
+        messageRetailer.setContent(String.valueOf(totalPredictedEnergyConsumption));;
         
         send(messageRetailer);
         
@@ -331,11 +349,11 @@ public class HomeAgent extends Agent implements GUIListener
                     System.out.println("");
                     System.out.println("2ND");
                     System.out.println("Best Price $" + bestPrice + " from " + bestOffer.getSender().getLocalName());
+                    System.out.println("Ideal Best Price: "  + idealBestPrice);
 
-                    System.out.println(getLocalName() + "'s ideal budget is $" + idealBudgetLimit);
                     printGUI("");
                     ACLMessage reply = bestOffer.createReply();
-                    if( bestPrice > idealBudgetLimit){//negotiate the new price if the original offer is not good
+                    if( bestPrice > idealBestPrice){//negotiate the new price if the original offer is not good
                     	
                         reply.setPerformative(ACLMessage.REQUEST);
                         
@@ -344,6 +362,7 @@ public class HomeAgent extends Agent implements GUIListener
                         reply.setContent(String.valueOf(negoBestPrice));
                         
                         printGUI("The best offer is from " + bestOffer.getSender().getLocalName() +", which is $"+ bestPrice);
+                        printGUI("Ideal Best Price: $"+idealBestPrice);
                         printGUI("<font color='gray'>---- Start Negotiation -----</font>");
                         printGUI("<font color='gray' size='-1'>Stage 1:</font>");
                         System.out.println("Negotiation: Asking for price at $"+ reply.getContent());
@@ -375,13 +394,13 @@ public class HomeAgent extends Agent implements GUIListener
         
         /** 3RD --- Get the counter offer if have from the retailer agent */
         //Tola : handle the counter offer
-        retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 5000, template ) {
+        retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 5000, template, "3RD" ) {
 			public void handle( ACLMessage message) {
-				if( bestPrice <= idealBudgetLimit) {
+				if( bestPrice <= idealBestPrice) {
                     System.out.println("");
                     System.out.println("3RD");
                     // no need to re-negotiate
-                    System.out.println("Best price ("+bestPrice+") <= ideal budget limit ("+idealBudgetLimit+")");
+                    System.out.println("Best price ("+bestPrice+") <= ideal budget limit ("+idealBestPrice+")");
 					return;
 				}
 				if (message != null ) {
@@ -390,7 +409,7 @@ public class HomeAgent extends Agent implements GUIListener
 					//Get the counter offer from retailer
 					if ( message.getPerformative() == ACLMessage.REQUEST) {
 						ACLMessage reply = bestOffer.createReply();
-	                    if( bestPrice > idealBudgetLimit ){//negotiate the new price
+	                    if( bestPrice > idealBestPrice ){//negotiate the new price
 	                        reply.setPerformative(ACLMessage.REQUEST);
 	                        try {
 	                        	double offer = Double.parseDouble(bestOffer.getContent());
@@ -469,8 +488,7 @@ public class HomeAgent extends Agent implements GUIListener
 
         // 4TH --- Final decision 
         // have 3s before timeout
-        retailerSeQue.addSubBehaviour( new MyReceiverBehaviour( this, 7000,
-                template) 
+        retailerSeQue.addSubBehaviour( new MyReceiverBehaviour( this, 7000, template, "4TH") 
 				{
 					public void handle( ACLMessage message) 
 					{  
@@ -510,25 +528,33 @@ public class HomeAgent extends Agent implements GUIListener
 						}
 					}	
 				});
+            
+        retailerSeQue.addSubBehaviour(new OneShotBehaviour(){
+            public void action(){
+                if(hasNegotiationFinished){
+                    System.out.println("Negotiation finished");
+                    System.out.println("Total Predicted Comsumption: "+ totalPredictedEnergyConsumption);
+                    System.out.println("Amount of paid money: $" + (totalPredictedEnergyConsumption*bestPrice));
+                    budgetLimit = budgetLimit - (totalPredictedEnergyConsumption*bestPrice);
+                    System.out.println("Remaining Budget: $"+ budgetLimit);
+                }else{
+                    System.out.println("Negotiation has not finished yet!!");
+                }
+            }
+        });
+    
         
+        //Send result back to the retailer agent
+        retailerSeQue.addSubBehaviour(new SendResultToApplianceBehaviour());
     }
 
-    /**
-     * Clean up when agent die
-     */
-    @Override
-    protected void takeDown()
-    {
-        //Deregister from DF
-        try {
-            DFService.deregister(this);
-        } catch (FIPAException fe) {
-            //TODO: handle exception
-            fe.printStackTrace();
-        }
+    
 
-        System.out.println(agentName + ": closed.");
-    }
+
+    
+
+
+    
     /*---- Ultility methods to access DF ---- */
     
     /**
@@ -579,82 +605,28 @@ public class HomeAgent extends Agent implements GUIListener
         }
         return null;        
     }
-
-
-    /* --- Jade Agent behaviour classes --- */
     
 
-    //Declare ReiverBehaviour - this behaviour controls the characteristic of behaviour as well as it life time
-    private class MyReceiverBehaviour extends SimpleBehaviour
+    /**
+    * Clean up when agent die
+    */
+    @Override
+    protected void takeDown()
     {
-        private MessageTemplate template;
-        private long timeOut, wakeupTime;
-        private boolean finished;
-        private ACLMessage message;
-
-        public ACLMessage getMessage(){
-            return message;
-        }
-        public MyReceiverBehaviour(Agent a, int millis, MessageTemplate mt){
-            super(a);
-            timeOut = millis;
-            template = mt;
+        //Deregister from DF
+        try {
+            DFService.deregister(this);
+        } catch (FIPAException fe) {
+            //TODO: handle exception
+            fe.printStackTrace();
         }
 
-        public void onStart()
-        {
-            wakeupTime = (timeOut < 0 ? Long.MAX_VALUE:System.currentTimeMillis() + timeOut);
-        }
-
-        public boolean done()
-        {
-            return finished;
-        }
-
-        public void action()
-        {
-            /**Check whether tempalte is available */
-            if(template == null){
-                message = myAgent.receive();
-            }
-            else{
-                message = myAgent.receive(template);
-            }
-
-            if(message != null){
-                finished = true;
-                handle(message);
-                return;
-            }
-
-            long dt = wakeupTime - System.currentTimeMillis();
-            if( dt > 0){
-                block(dt);
-            }
-            else{
-                finished = true;
-                handle(message);
-            }
-        }
-
-        public void handle(ACLMessage m){
-            /**can be redfined  */
-        }
-
-        /**Rest the behaviour */
-        public void reset(){
-            message = null;
-            finished = false;
-            super.reset();
-        }
-
-        public void reset(int dt){
-            timeOut = dt;
-            reset();
-        }
+        System.out.println(agentName + ": closed.");
     }
 
-    
+
+
+
 
     /* --- GUI --- */
     // Tola : add GUI
@@ -677,6 +649,10 @@ public class HomeAgent extends Agent implements GUIListener
 		msg.setContent("");
 		send(msg);
 	}
+
+
+
+
 
     /* --- Utility methods --- */
     protected static int cidCnt = 0;
@@ -764,7 +740,4 @@ public class HomeAgent extends Agent implements GUIListener
     private double truncatedDouble(double value) {
 		return java.math.BigDecimal.valueOf(value).setScale(3, java.math.RoundingMode.HALF_UP).doubleValue();
 	}
- 
-    
-    
 }
