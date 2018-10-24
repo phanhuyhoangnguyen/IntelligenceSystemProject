@@ -49,8 +49,8 @@ public class ApplianceAgent extends Agent {
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final int HALF_HOUR = 1800000;
-	//private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
-	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
+	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
 	private static final int secondsInADay = 86400;					// number of seconds in a day
@@ -195,14 +195,14 @@ public class ApplianceAgent extends Agent {
     
     		// Method to handle an inform message from Home Agent after its negotiation with Retailer is success
 	        protected void handleInform(ACLMessage inform) {
-	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + " has negotiated successful with Retailer Agent. Appliance's request is fulfiled");
-	        	System.out.println(getLocalName() + ": " + inform.getSender().getName() + "'s offer is " + inform.getContent());
+	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + " has negotiated successful with "+getLocalName()+" Agent. Appliance's request is fulfiled");
+	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + "'s offer is " + inform.getContent());
 	        }
 	        
 	        // Method to handle a refuse message from responder
 	        protected void handleRefuse(ACLMessage refuse) {
 	        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to buy energy. Appliance's request is not met");
-	        	// TODO: uncomment this to check if Appliance is able to send request again
+	        	// TODO uncomment this to check if Appliance is able to send request again
 	        	// addBehaviour(new reportingEnergyUsagePrediction());
 	        }
 	

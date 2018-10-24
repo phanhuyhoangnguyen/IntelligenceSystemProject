@@ -9,6 +9,7 @@ import jade.lang.acl.MessageTemplate;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.*;
 import jade.domain.FIPAException;
+import jade.proto.AchieveREInitiator;
 import jade.proto.AchieveREResponder;
 import jade.domain.FIPANames;
 
@@ -157,9 +158,13 @@ public class HomeAgent extends Agent implements GUIListener
         //homeSequenceBehaviour.addSubBehaviour(retailerSequenceBehaviour);
         //CommunicateWithRetailer(retailerSequenceBehaviour);
         
+        
+
         addBehaviour(homeSequenceBehaviour);
     }
 
+
+    /* --- Jade Agent behaviour classes --- */
     private class CommunicateWithApplianceBehaviour extends AchieveREResponder{
         public CommunicateWithApplianceBehaviour(Agent a, MessageTemplate mt){
             super(a,mt);
@@ -238,7 +243,20 @@ public class HomeAgent extends Agent implements GUIListener
         }
     }
     
-    
+    private class SendResultToApplianceBehaviour extends OneShotBehaviour{
+        public void action(){
+            System.out.println("\n**** Send Result ****");
+            System.out.println("\nResult:"+bestPrice);
+            
+            //Send the result after finishing negotiation
+            AID[] appliances = getAgentList("Appliance");
+            ACLMessage resultMessage = new ACLMessage(ACLMessage.INFORM);
+            for(AID appliance: appliances){
+                resultMessage.addReceiver(appliance);
+            }
+            resultMessage.setContent(""+bestPrice);
+        }
+    }
     
     /***
      * Communicate with Retailer Agent
@@ -285,7 +303,7 @@ public class HomeAgent extends Agent implements GUIListener
             messageRetailer.addReceiver(retailer);
             
             // Got 5s to get the receiver the offers before timeout
-            retailerSeQue.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template){
+            retailerSeQue.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template,"1ST"){
                 public void handle(ACLMessage message)
                 {
                     if(message!=null){
@@ -375,7 +393,7 @@ public class HomeAgent extends Agent implements GUIListener
         
         /** 3RD --- Get the counter offer if have from the retailer agent */
         //Tola : handle the counter offer
-        retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 5000, template ) {
+        retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 5000, template, "3RD" ) {
 			public void handle( ACLMessage message) {
 				if( bestPrice <= idealBudgetLimit) {
                     System.out.println("");
@@ -469,8 +487,7 @@ public class HomeAgent extends Agent implements GUIListener
 
         // 4TH --- Final decision 
         // have 3s before timeout
-        retailerSeQue.addSubBehaviour( new MyReceiverBehaviour( this, 7000,
-                template) 
+        retailerSeQue.addSubBehaviour( new MyReceiverBehaviour( this, 7000, template, "4TH") 
 				{
 					public void handle( ACLMessage message) 
 					{  
@@ -511,24 +528,17 @@ public class HomeAgent extends Agent implements GUIListener
 					}	
 				});
         
+
+            retailerSeQue.addSubBehaviour(new SendResultToApplianceBehaviour());
     }
 
-    /**
-     * Clean up when agent die
-     */
-    @Override
-    protected void takeDown()
-    {
-        //Deregister from DF
-        try {
-            DFService.deregister(this);
-        } catch (FIPAException fe) {
-            //TODO: handle exception
-            fe.printStackTrace();
-        }
+    
 
-        System.out.println(agentName + ": closed.");
-    }
+
+    
+
+
+    
     /*---- Ultility methods to access DF ---- */
     
     /**
@@ -579,82 +589,28 @@ public class HomeAgent extends Agent implements GUIListener
         }
         return null;        
     }
-
-
-    /* --- Jade Agent behaviour classes --- */
     
 
-    //Declare ReiverBehaviour - this behaviour controls the characteristic of behaviour as well as it life time
-    private class MyReceiverBehaviour extends SimpleBehaviour
+    /**
+    * Clean up when agent die
+    */
+    @Override
+    protected void takeDown()
     {
-        private MessageTemplate template;
-        private long timeOut, wakeupTime;
-        private boolean finished;
-        private ACLMessage message;
-
-        public ACLMessage getMessage(){
-            return message;
-        }
-        public MyReceiverBehaviour(Agent a, int millis, MessageTemplate mt){
-            super(a);
-            timeOut = millis;
-            template = mt;
+        //Deregister from DF
+        try {
+            DFService.deregister(this);
+        } catch (FIPAException fe) {
+            //TODO: handle exception
+            fe.printStackTrace();
         }
 
-        public void onStart()
-        {
-            wakeupTime = (timeOut < 0 ? Long.MAX_VALUE:System.currentTimeMillis() + timeOut);
-        }
-
-        public boolean done()
-        {
-            return finished;
-        }
-
-        public void action()
-        {
-            /**Check whether tempalte is available */
-            if(template == null){
-                message = myAgent.receive();
-            }
-            else{
-                message = myAgent.receive(template);
-            }
-
-            if(message != null){
-                finished = true;
-                handle(message);
-                return;
-            }
-
-            long dt = wakeupTime - System.currentTimeMillis();
-            if( dt > 0){
-                block(dt);
-            }
-            else{
-                finished = true;
-                handle(message);
-            }
-        }
-
-        public void handle(ACLMessage m){
-            /**can be redfined  */
-        }
-
-        /**Rest the behaviour */
-        public void reset(){
-            message = null;
-            finished = false;
-            super.reset();
-        }
-
-        public void reset(int dt){
-            timeOut = dt;
-            reset();
-        }
+        System.out.println(agentName + ": closed.");
     }
 
-    
+
+
+
 
     /* --- GUI --- */
     // Tola : add GUI
@@ -677,6 +633,10 @@ public class HomeAgent extends Agent implements GUIListener
 		msg.setContent("");
 		send(msg);
 	}
+
+
+
+
 
     /* --- Utility methods --- */
     protected static int cidCnt = 0;
@@ -764,7 +724,4 @@ public class HomeAgent extends Agent implements GUIListener
     private double truncatedDouble(double value) {
 		return java.math.BigDecimal.valueOf(value).setScale(3, java.math.RoundingMode.HALF_UP).doubleValue();
 	}
- 
-    
-    
 }
