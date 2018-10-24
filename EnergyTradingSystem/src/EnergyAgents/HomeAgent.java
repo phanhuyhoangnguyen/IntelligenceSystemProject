@@ -70,7 +70,7 @@ public class HomeAgent extends Agent implements GUIListener
         this.totalPredictedEnergyConsumption = 0;
         this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
-        this.budgetLimit = getRandomDouble(3000, 5000);
+        this.budgetLimit = getRandomDouble(3500, 5000);
         //this.idealBestPrice = truncatedDouble( this.budgetLimit * 0.7); // 70% of the budget
 
         //Agent name and type
@@ -155,12 +155,6 @@ public class HomeAgent extends Agent implements GUIListener
         MessageTemplate applianceTemplate = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
         
         homeSequenceBehaviour.addSubBehaviour(new CommunicateWithApplianceBehaviour(this, applianceTemplate));
-        
-        // Tola: wait until all demands have been calculated
-        //Communicate with the retailer agents
-        //homeSequenceBehaviour.addSubBehaviour(retailerSequenceBehaviour);
-        //CommunicateWithRetailer(retailerSequenceBehaviour);
-        
         
 
         addBehaviour(homeSequenceBehaviour);
@@ -268,7 +262,6 @@ public class HomeAgent extends Agent implements GUIListener
             while(receivers.hasNext()) {
                 System.out.println(((AID)receivers.next()).getLocalName());
             }
-
             send(resultMessage);
         }
     }
@@ -513,17 +506,6 @@ public class HomeAgent extends Agent implements GUIListener
 						System.out.println("The Second Propsal Refused");
                         System.out.println("The Second Offer: $"+bestPrice);
                         printGUI(getLocalName() + "'s second offer is rejected, which is <b>$" + negoBestPrice+"</b>");
-                        /*
-                        System.out.println("Accept the previous offer: $" + bestPrice);
-                        printGUI(getLocalName() + " takes the previous offer, which is $"+ bestPrice);
-                        //Send agree message to retailer
-                        ACLMessage reply = bestOffer.createReply();
-                        reply.setPerformative(ACLMessage.AGREE);
-                        reply.setContent(""+bestPrice);
-                        //Finish negotiation
-						System.out.println("  --------- Finished ---------\n");
-                        printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
-                        */
                         //TODo: If possible do 1 more stage
                         ACLMessage thirdMessage = bestOffer.createReply();
                         thirdMessage.setPerformative(ACLMessage.REQUEST);

@@ -471,10 +471,10 @@ public class ApplianceAgent extends Agent {
 			System.out.println(getLocalName() + ": Waiting for Result Message....");
 
 			// retrieve message from message queue if there is
-	        ACLMessage msg= receive();
+	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
 		        // print out message content
-		        System.out.println(getLocalName()+ ": Received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
+		        System.out.println(getLocalName()+ ": received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
 		        isReceived = true;
 			}
 	    
