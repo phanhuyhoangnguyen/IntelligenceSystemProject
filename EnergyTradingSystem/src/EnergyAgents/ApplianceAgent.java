@@ -468,7 +468,7 @@ public class ApplianceAgent extends Agent {
 		SequentialBehaviour sb = new SequentialBehaviour();
         
         searchHomeAgent searchHomeAgent = new searchHomeAgent();
-		
+        /*
         // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
         TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
     
@@ -483,7 +483,22 @@ public class ApplianceAgent extends Agent {
 			        addBehaviour(communicationSequence);
             	}
             }
-        };
+		};*/
+		//TODO : @DAVE This code below is for testing (run only 1)
+		// Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
+		DelayBehaviour communicateToHome = new DelayBehaviour(this, 3000) {
+			protected void handleElapsedTimeout() {
+				if (true) {
+					SequentialBehaviour communicationSequence = new SequentialBehaviour();
+					// Register state Predicting and Request to buy
+					communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+					// Register state Reporting Actual Usage
+					//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+					
+					addBehaviour(communicationSequence);
+				}
+			}
+		};
         
         // Trigger service to find home agent
         sb.addSubBehaviour(searchHomeAgent);	 

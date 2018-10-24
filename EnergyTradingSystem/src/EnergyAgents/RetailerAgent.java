@@ -93,10 +93,10 @@ public class RetailerAgent extends Agent implements GUIListener{
 		agentType = "Retailer";
 		
 		currentUsage = 0;
-		usageCharge = getRandomDouble(20.0, 30.0);	// 20 to 30 cents
+		usageCharge = getRandomDouble(20.0, 30.0);	// 20 to 30 cents per kwh
 		overCharge = usageCharge + (usageCharge * 0.05);	// plus 5%
 		
-		negoPrice = calcPrice(0);	// calculate negoPrice based on demand
+		negoPrice = calcNegoPrice(0);	// calculate negoPrice based on demand
 		negoLimitPrice = truncatedDouble( negoPrice - (negoPrice * 0.15) );	// eg. no more than 15%
 		negoIterateReduceBy = 0.2; // reduce 0.2 percent in each counter
 		
@@ -255,22 +255,23 @@ public class RetailerAgent extends Agent implements GUIListener{
 	 * @param double demand
 	 * @return double price
 	 */
-	private double calcPrice(double demand) {
-		double price = (demand * usageCharge) / 100; // convert cents to dollar
-		
-		if ( demand > 0 ) {
-			switch( negoMechanism ) {
-				case ON_DEMAND:
-					if ( demand >= 150 ) {
-						price *= 0.2;
-					} else if ( demand >= 100 ) {
-						price *= 0.15;
-					} else  if ( demand >= 50 ) {
-						price *= 0.1;
-					}
-					break;
-				default:
-			}
+	private double calcNegoPrice(double demand) {
+		double price = usageCharge;
+		if ( demand == 0) {
+			return price;
+		}
+		switch( negoMechanism ) {
+			case BY_TIME:
+			case ON_DEMAND:
+				if ( demand >= 150 ) {
+					price *= 0.2;
+				} else if ( demand >= 100 ) {
+					price *= 0.15;
+				} else  if ( demand >= 50 ) {
+					price *= 0.1;
+				}
+				break;
+			default:
 		}
 		
 		return truncatedDouble(price);
@@ -475,7 +476,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 						// calculate negotiation price based on demand
 						try {
 							double demand = Double.parseDouble(content);
-							negoPrice = calcPrice(demand);
+							negoPrice = calcNegoPrice(demand);
 						}catch ( NumberFormatException nfe) {
 							nfe.printStackTrace();
 							System.out.println( agentName + " not understood.");
@@ -580,32 +581,11 @@ public class RetailerAgent extends Agent implements GUIListener{
 						reply.setPerformative(ACLMessage.REFUSE);
 						reply.setContent("0");
 						break;
-						
-					/* send total amount */
-						// TODO: not complete
-					case ACLMessage.INFORM:
-						System.out.println( agentName + " received an inform from " + senderName);
-						try {
-							double usage = Double.parseDouble(content);
-							currentUsage += usage;
-							reply.setPerformative(ACLMessage.INFORM_REF);
-							reply.setContent(Double.toString(currentUsage));
-						}catch ( NumberFormatException nfe) {
-							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
-							reply.setContent("NOT UNDERSTOOD");
-							break;
-						}catch ( NullPointerException npe) {
-							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
-							reply.setContent("NOT UNDERSTOOD");
-							break;
-						}
-						
-						break;
-						
+								
 					default:
 						// do nothing
-						//reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
-						//reply.setContent("NOT UNDERSTOOD");
+						reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+						reply.setContent("NOT UNDERSTOOD");
 				}
 				
 				// send back
