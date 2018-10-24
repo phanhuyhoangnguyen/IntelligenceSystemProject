@@ -37,8 +37,7 @@ import database.DbHelper;
 
 /**
  * ApplianceAgent
- * @author Phan
- * 
+ * @author Phan - 101042618
  * @Description The applicant agent compute its energy usage and send it to the HomeAgent periodically
  */
 public class ApplianceAgent extends Agent {
@@ -95,6 +94,9 @@ public class ApplianceAgent extends Agent {
 		}
     }
 	
+	/**
+	 * 	Register Appliance's service to the DF
+	 */
 	private void register(ServiceDescription sd) {
 		DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
@@ -172,17 +174,41 @@ public class ApplianceAgent extends Agent {
             protected void onTick() {
             	if (isFinishedNegotiated) {
 		        	SequentialBehaviour communicationSequence = new SequentialBehaviour();
-			        // Register state Predicting and Request to buy
-		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction());
-			        // Register state Reporting Actual Usage
-		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
+		        	
+		        	String predictionUsage;
+					double predictedValue = getUsagePrediction(USAGE_DURATION);
+					
+					// round up the double value to 2 decimal places
+					DecimalFormat df = new DecimalFormat("#.##");
+					predictionUsage = df.format(predictedValue);
+					
+			        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
+			        
+		        	// Create message to send to HomeAgent
+		            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+		        	msg.addReceiver(getHomeAgent());
+		            // Set the interaction protocol
+		        	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
+
+		        	// Specify the reply deadline (10 seconds)
+		        	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
+		            
+		    		// Set message content
+		        	msg.setContent(predictionUsage);
+		        	isFinishedNegotiated = false;
+		        	
+			        // Add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
+		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
 		        	
 		        	// Only listen to Home Agent with Inform message
 		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),
 		        			MessageTemplate.MatchSender(getHomeAgent()));
 
-					// Create behaviour that receives messages
+					// Add behaviour that receives messages
 		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
+		        	
+		        	// Add behaviour to report Actual Usage
+		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
 		        	
 			        addBehaviour(communicationSequence);
             	}
@@ -221,8 +247,10 @@ public class ApplianceAgent extends Agent {
         // add sequential behaviour to the Agent
         addBehaviour(sb);
 	}
-    
-    // This behaviour search for home agent
+     
+	/**
+	 * This behaviour search for home agent
+	 */
     private class SearchHomeAgent extends OneShotBehaviour {
     	public void action() {
     		// Search for home agent
@@ -230,32 +258,58 @@ public class ApplianceAgent extends Agent {
     	}
     }
     
-    // This behaviour search for home agent
-    private class SendEnergyUsagePrediction extends OneShotBehaviour {
-    	public void action() {
-			String predictionUsage;
-			
-			double predictedValue = getUsagePrediction(USAGE_DURATION);
-			
-			// round up the double value to 2 decimal places
-			DecimalFormat df = new DecimalFormat("#.##");
-			predictionUsage = df.format(predictedValue);
-			
-	        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
-	        
-        	// Send request to HomeAgent
-            sendRequestBuyingEnergyToHome(predictionUsage); 
-    	}
+	/**
+	 *  This behaviour send usage prediction for home agent
+	 */
+    private class SendEnergyUsagePrediction extends AchieveREInitiator {
+    	public SendEnergyUsagePrediction(Agent a, ACLMessage msg) {
+			super(a, msg);
+		}
+		// Method to handle an agree message from responder
+		protected void handleAgree(ACLMessage agree) {
+			System.out.println(getLocalName() + ": " + agree.getSender().getLocalName() + " has agreed to the request");
+		}
+
+		// Method to handle an inform message from Home Agent after its negotiation with Retailer is success
+        protected void handleInform(ACLMessage inform) {
+        	System.out.println(getLocalName() + ": receive the inform from " + inform.getSender().getLocalName());
+        }
+        
+        // Method to handle a refuse message from responder
+        protected void handleRefuse(ACLMessage refuse) {
+        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request.");
+        }
+
+        // Method to handle a failure message (failure in delivering the message)
+        protected void handleFailure(ACLMessage failure) {
+        	if (failure.getSender().equals(myAgent.getAMS())) {
+        		// FAILURE notification from the JADE runtime -> the receiver does not exist
+        		System.out.println(getLocalName() + ": " + getHomeAgent() +" does not exist");
+        	} else {
+                System.out.println(getLocalName() + ": " + failure.getSender().getLocalName() + " failed to perform the requested action");
+        	}
+        }
+            
+        // Method that is invoked when notifications have been received from all responders
+        protected void handleAllResultNotifications(Vector notifications) {
+        	System.out.println(getLocalName() + ": the request is completed!");
+        	isFinishedNegotiated = true;
+        }
     }
-    
-    // This behaviour send actual energy usage to home
+
+	/**
+	 *  This behaviour send actual energy usage to home
+	 */
     private class ReportingActualEnergyUsage extends OneShotBehaviour {
     	public void action() {
         	// this is only trigger when the stage 1 is completed
         	sendActualUsage();
     	}
     }
-
+    
+	/**
+	 *  This method to search for home agent
+	 */
 	private AID searchForHomeAgent(String service) {
 		AID homeAgent = null;
 	    // Search for HomeAgent via its service
@@ -269,8 +323,10 @@ public class ApplianceAgent extends Agent {
 	    return homeAgent;
 	}
 	
-    // Energy Consumption Stimulation and Send to Home Agent 
-    // Agents doesn't produce the energy but read from database and send them to Home Agent
+	/**
+	 *  Energy Consumption Stimulation and Send to Home Agent
+	 *  Agents doesn't produce the energy but read from database and send them to Home Agent
+	 */
     protected void sendActualUsage() {
     	String energyConsumed = Double.toString(getActualEnergyUsage(USAGE_DURATION));
         	
@@ -289,57 +345,6 @@ public class ApplianceAgent extends Agent {
 	    // send message
 	    send(msg);
     }
-    
-	private void sendRequestBuyingEnergyToHome(String predictionUsage) {
-		ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-    	msg.addReceiver(getHomeAgent());
-        // Set the interaction protocol
-    	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
-
-    	// Specify the reply deadline (10 seconds)
-    	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
-        
-		// Set message content
-    	msg.setContent(predictionUsage);
-
-    	isFinishedNegotiated = false;
-    	// Define the AchieveREInitiator behaviour with the message
-    	addBehaviour(new AchieveREInitiator(this, msg) {
-    		// Method to handle an agree message from responder
-    		protected void handleAgree(ACLMessage agree) {
-    			System.out.println(getLocalName() + ": " + agree.getSender().getLocalName() + " has agreed to the request");
-    		}
-    
-    		// Method to handle an inform message from Home Agent after its negotiation with Retailer is success
-	        protected void handleInform(ACLMessage inform) {
-	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + " has negotiated successful with "+getLocalName()+" Agent. Appliance's request is fulfiled");
-	        	System.out.println(getLocalName() + ": " + inform.getSender().getLocalName() + "'s offer is " + inform.getContent());
-	        }
-	        
-	        // Method to handle a refuse message from responder
-	        protected void handleRefuse(ACLMessage refuse) {
-	        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to buy energy. Appliance's request is not met");
-	        	// TODO uncomment this to check if Appliance is able to send request again
-	        	// addBehaviour(new reportingEnergyUsagePrediction());
-	        }
-	
-	        // Method to handle a failure message (failure in delivering the message)
-	        protected void handleFailure(ACLMessage failure) {
-	        	if (failure.getSender().equals(myAgent.getAMS())) {
-	        		// FAILURE notification from the JADE runtime -> the receiver does not exist
-	        		System.out.println(getLocalName() + ": " + getHomeAgent() +" does not exist");
-	        	} else {
-	                System.out.println(getLocalName() + ": " + failure.getSender().getLocalName() + " failed to perform the requested action");
-	        	}
-	        }
-	            
-	        // Method that is invoked when notifications have been received from all responders
-	        protected void handleAllResultNotifications(Vector notifications) {
-	        	System.out.println(getLocalName() + ": " + " the request is completed!");
-	        	isFinishedNegotiated = true;
-	        }
-	    });
-	}
 	
 	/**
 	 *  Energy Consumption Prediction - Naive Prediction with the data from CSV file
