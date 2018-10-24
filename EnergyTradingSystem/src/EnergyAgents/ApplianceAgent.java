@@ -165,7 +165,7 @@ public class ApplianceAgent extends Agent {
 		SequentialBehaviour sb = new SequentialBehaviour();
         
         SearchHomeAgent searchHomeAgent = new SearchHomeAgent();
-        
+        /*
         // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
         TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
     
@@ -188,22 +188,29 @@ public class ApplianceAgent extends Agent {
             	}
             }
 		};
-		
-		/*//TODO : @DAVE This code below is for testing (run only 1)
+		*/
+		//TODO : @DAVE This code below is for testing (run only 1)
 		// Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
 		DelayBehaviour communicateToHome = new DelayBehaviour(this, 3000) {
 			protected void handleElapsedTimeout() {
 				if (true) {
 					SequentialBehaviour communicationSequence = new SequentialBehaviour();
 					// Register state Predicting and Request to buy
-					communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+					communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction());
 					// Register state Reporting Actual Usage
-					//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+					//communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
 					
+
+					// Only listen to Home Agent with Inform message
+		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
+		        			MessageTemplate.MatchSender(getHomeAgent()));
+
+					// Create behaviour that receives messages
+		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
 					addBehaviour(communicationSequence);
 				}
 			}
-		};*/
+		};
         
         // Trigger service to find home agent
         sb.addSubBehaviour(searchHomeAgent);	 
@@ -431,14 +438,14 @@ public class ApplianceAgent extends Agent {
 		
 		@Override
 		public void action() {
-			System.out.println(getLocalName() + ": Waiting for message");
+			System.out.println(getLocalName() + ": Waiting for Result Message....");
 
 			// Retrieve message from message queue if there is
 	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
 		        // Print out message content
-		        System.out.println(getLocalName()+ ": Received response " + msg.getContent() + " from " + msg.getSender().getLocalName());
-	       }
+		        System.out.println(getLocalName()+ ": Received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
+			}
 	    
 	        // Block the behaviour from terminating and keep listening to the message
 	        block();

@@ -233,7 +233,7 @@ public class HomeAgent extends Agent implements GUIListener
                 System.out.println(getLocalName() + ": Action successfully performed, informing initiator");
                 ACLMessage inform = request.createReply();
                 inform.setPerformative(ACLMessage.INFORM);
-                inform.setContent(String.valueOf(Math.random()));
+                inform.setContent("successfully");
                 return inform;
             } else {
                 // Action failed
@@ -246,15 +246,16 @@ public class HomeAgent extends Agent implements GUIListener
     private class SendResultToApplianceBehaviour extends OneShotBehaviour{
         public void action(){
             System.out.println("\n**** Send Result ****");
-            System.out.println("\nResult:"+bestPrice);
+            System.out.println("Result:"+bestPrice);
             
             //Send the result after finishing negotiation
             AID[] appliances = getAgentList("Appliance");
-            ACLMessage resultMessage = new ACLMessage(ACLMessage.INFORM);
+            ACLMessage resultMessage = new ACLMessage(ACLMessage.CONFIRM);
             for(AID appliance: appliances){
                 resultMessage.addReceiver(appliance);
             }
             resultMessage.setContent(""+bestPrice);
+            send(resultMessage);
         }
     }
     
