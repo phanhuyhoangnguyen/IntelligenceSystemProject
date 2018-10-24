@@ -258,12 +258,17 @@ public class HomeAgent extends Agent implements GUIListener
 
             //Send the result after finishing negotiation
             AID[] appliances = getAgentList("Appliance");
-            System.out.println("Total appliances: "+ appliances.length);
             ACLMessage resultMessage = new ACLMessage(ACLMessage.CONFIRM);
             for(AID appliance: appliances){
                 resultMessage.addReceiver(appliance);
             }
             resultMessage.setContent(""+bestPrice);
+
+            Iterator receivers = resultMessage.getAllIntendedReceiver();
+            while(receivers.hasNext()) {
+                System.out.println(((AID)receivers.next()).getLocalName());
+            }
+
             send(resultMessage);
         }
     }
@@ -320,27 +325,24 @@ public class HomeAgent extends Agent implements GUIListener
                 System.out.println("**** NEGOTIATION **** ");
                 System.out.println("Home Budget: "  + budgetLimit);
                 System.out.println("Total Consumption: "  + totalPredictedEnergyConsumption);
-                
+                idealBestPrice = budgetLimit/totalPredictedEnergyConsumption;
+                bestPrice = idealBestPrice;
+                System.out.println("Ideal Best Price: $"  + idealBestPrice);
                 System.out.println("");
                 //Print to GUI
                 printGUI("<font color='black'>---- NEGOTIATION ---- </font> ");
                 printGUI("Home Budget: <b>$"  + budgetLimit+"</b>");
                 printGUI("Total Consumption: <b>"  + totalPredictedEnergyConsumption+"</b>");
+                printGUI("Ideal Best Price: $"  + idealBestPrice);
                 printGUI("");
             }
         });
 
         //Initialize message and template for communicating with Retailer Agent
-        ACLMessage messageRetailer = newMessage(ACLMessage.CFP);	// Tola: change to CFP
-        //MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(messageRetailer.getConversationId() ));
-        MessageTemplate template = MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
+        ACLMessage messageRetailer = newMessage(ACLMessage.CFP);	
         
-        // Tola: Parallel behaviour is not suitable for this, it's a step by step
-        //Add parallel behaviour to handle conversations
-        //WHEN_ALL: terminiate the behaviour when all its children are done
-        //ParallelBehaviour par = new ParallelBehaviour(ParallelBehaviour.WHEN_ALL);
-        //retailerSeQue.addSubBehaviour(par);
-
+        MessageTemplate template = MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
+    
         //Get all retailer agents
         AID[] retailers = getAgentList("Retailer");
         
@@ -364,9 +366,8 @@ public class HomeAgent extends Agent implements GUIListener
                             System.out.println( offer  + " < " + bestPrice);
 
                     		//Compare with budgetLimit
-                            if(offer <= bestPrice){
+                            if(offer <= idealBestPrice){
                                 bestPrice = offer;// set new better limit
-                                idealBestPrice = truncatedDouble(bestPrice - 0.15 * bestPrice);
                                 bestOffer = message;
                             }
                     	}catch(NumberFormatException nfe) {
@@ -402,7 +403,7 @@ public class HomeAgent extends Agent implements GUIListener
 
                     printGUI("");
                     ACLMessage reply = bestOffer.createReply();
-                    if( bestPrice > idealBestPrice){//negotiate the new price if the original offer is not good
+                    if( bestPrice > idealBestPrice*0.8){//negotiate the new price if the original offer is not good (reduce 20% of ideal best price)
                     	
                         reply.setPerformative(ACLMessage.REQUEST);
                         
@@ -445,13 +446,14 @@ public class HomeAgent extends Agent implements GUIListener
         //Tola : handle the counter offer
         retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 5000, template, "3RD" ) {
 			public void handle( ACLMessage message) {
+                /*
 				if( bestPrice <= idealBestPrice) {
                     System.out.println("");
                     System.out.println("3RD");
                     // no need to re-negotiate
                     System.out.println("Best price ("+bestPrice+") <= ideal budget limit ("+idealBestPrice+")");
 					return;
-				}
+				}*/
 				if (message != null ) {
                     System.out.println("");
                     System.out.println("3RD");
@@ -616,7 +618,7 @@ public class HomeAgent extends Agent implements GUIListener
 
         MessageTemplate actualMessageTemplate =MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
         //Receive actual consumption
-        retailerSeQue.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
+        //retailerSeQue.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
     }
 
     
