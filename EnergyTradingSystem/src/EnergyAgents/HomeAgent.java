@@ -381,8 +381,7 @@ public class HomeAgent extends Agent implements GUIListener
                     System.out.println("");
                     System.out.println("3RD");
                     // no need to re-negotiate
-                    System.out.println("Best Price: " + bestPrice);
-                    System.out.println("ideal: " +(idealBudgetLimit));
+                    System.out.println("Best price ("+bestPrice+") <= ideal budget limit ("+idealBudgetLimit+")");
 					return;
 				}
 				if (message != null ) {
@@ -453,12 +452,14 @@ public class HomeAgent extends Agent implements GUIListener
                         printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
                         */
                         //TODo: If possible do 1 more stage
-                        ACLMessage thirdOffer = bestOffer.createReply();
-                        thirdOffer.setPerformative(ACLMessage.REQUEST);
-                        negoBestPrice = truncatedDouble( negoBestPrice + negoBestPrice * 0.05); //increase 5%
-                        thirdOffer.setContent(""+negoBestPrice);
+                        ACLMessage thirdMessage = bestOffer.createReply();
+                        thirdMessage.setPerformative(ACLMessage.REQUEST);
+                        negoBestPrice = truncatedDouble( negoBestPrice + negoBestPrice * 0.1); //increase 10%
+                        thirdMessage.setContent(""+negoBestPrice);
+                        printGUI("<font color='gray' size='-1'>Stage 2:</font>");
                         System.out.println(getLocalName()+ "send the third offer, which is " + negoBestPrice);
                         printGUI(getLocalName()+" send the third offer, which is <b>$" + negoBestPrice+"</b>");
+                        send(thirdMessage);
 					}
 				}else{
                     System.out.println("3RD: message is null");
@@ -479,23 +480,33 @@ public class HomeAgent extends Agent implements GUIListener
 							System.out.println("Got " + 
 								ACLMessage.getPerformative(message.getPerformative() ) +
 								" from " + message.getSender().getLocalName());
-							
+                                
+                            ACLMessage fourthMessage = bestOffer.createReply();
+
 							if( message.getPerformative() == ACLMessage.AGREE){
                                 System.out.println("Proposal Accepted");
                                 System.out.println("Proposal Offer: $"+ negoBestPrice);
-                                printGUI(getLocalName() + " accepted the offer for $" + negoBestPrice);
+                                printGUI(bestOffer.getSender().getLocalName() + " accepted the offer for <b>$" + negoBestPrice+"</b>");
+                                
+                                fourthMessage.setContent(""+negoBestPrice);
+                                fourthMessage.setPerformative(ACLMessage.AGREE);
+                                send(fourthMessage);
                             }
 							else{//Refuse the proposal
                                 System.out.println("Propsal Refused");
                                 System.out.println("Original Offer: $"+bestPrice);
-                                printGUI(getLocalName() + " reject the offer for $" + negoBestPrice);
+                                printGUI(bestOffer.getSender().getLocalName()+ " reject the offer for <b>$" + negoBestPrice+"</b>");
+                                printGUI(getLocalName() +" accepts the original offer, which is <b>$"+ bestPrice+"</b>");
+
+                                fourthMessage.setContent(""+bestPrice);
+                                fourthMessage.setPerformative(ACLMessage.AGREE);
+                                send(fourthMessage);
                             }
 							System.out.println("  --------- Finished ---------\n");
 							printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
 						} 
 						else {
-							//System.out.println("==" + getLocalName() +" timed out");
-							//setup();//loop ultil get the order
+							System.out.println("No message for 4th round");
 						}
 					}	
 				});
