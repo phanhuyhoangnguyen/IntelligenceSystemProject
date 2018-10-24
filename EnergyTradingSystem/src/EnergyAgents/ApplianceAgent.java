@@ -42,15 +42,15 @@ public class ApplianceAgent extends Agent {
 	
 	// For Message Communication to HomeAgent
 	// TODO: change this later
-	private static final int UPATE_DURATION = 5000;					// 10s -> specify the frequency of message sent to Home Agent. 
+	private static final int UPATE_DURATION = 15000;				// 15s -> specify the frequency of message sent to Home Agent. 
 																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
 	// For energyUsage Stimulation
-	private static int actualLivedSeconds;							// number of seconds agents have lived since created
+	private int actualLivedSeconds;									// number of seconds agents have lived since created
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final int HALF_HOUR = 1800000;
-	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
-	
+	//private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
+	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
 	private static final int secondsInADay = 86400;					// number of seconds in a day
@@ -59,6 +59,9 @@ public class ApplianceAgent extends Agent {
 	private AID homeAgent;
 	private static final String HomeAgentService = "Home";
 	private boolean isFinishedNegotiated = true;
+	
+	// For testing
+	private int testCounter = 0;
 	
 	public ApplianceAgent () {
 		
@@ -102,8 +105,6 @@ public class ApplianceAgent extends Agent {
 			
 			double predictedValue = predictUsage(USAGE_DURATION);
 			
-			System.out.println("Predict Usage: "+ predictUsage());
-			
 			// round up the double value to 2 decimal places
 			DecimalFormat df = new DecimalFormat("#.##");
 			predictionUsage = df.format(predictedValue);
@@ -113,6 +114,21 @@ public class ApplianceAgent extends Agent {
         	// Send request to HomeAgent
             sendRequestBuyingEnergyToHome(predictionUsage); 
     	}
+    }
+    
+    private void reportEnergyUsagePrediction() {
+		String predictionUsage;
+		
+		double predictedValue = predictUsage(USAGE_DURATION);
+		
+		// round up the double value to 2 decimal places
+		DecimalFormat df = new DecimalFormat("#.##");
+		predictionUsage = df.format(predictedValue);
+		
+        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
+        
+    	// Send request to HomeAgent
+        sendRequestBuyingEnergyToHome(predictionUsage); 
     }
     
     // This behaviour send actual energy usage to home
@@ -343,11 +359,8 @@ public class ApplianceAgent extends Agent {
 		int dataIndex= applicantDict.get(this.applianceName.toUpperCase());
 		Double totalUsage = 0.0;
 		
-		// TODO: discuss with team
-        System.out.println(getApplianceName() + " getActualLivedSeconds before updating: "+ getActualLivedSeconds() + " timeDuration: " + timeDuration);
 		// update the number second have lived: move row 1 -> row 2 for CSV reading below
 		setActualLivedSeconds(getActualLivedSeconds() + timeDuration);
-        System.out.println(getApplianceName() + " getActualLivedSeconds after updating: "+ getActualLivedSeconds());
  	   
 		File file = new File(pathToCSV);
 		if(file.exists()) {
@@ -455,7 +468,7 @@ public class ApplianceAgent extends Agent {
 		SequentialBehaviour sb = new SequentialBehaviour();
         
         searchHomeAgent searchHomeAgent = new searchHomeAgent();
-        
+		
         // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
         TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
     
