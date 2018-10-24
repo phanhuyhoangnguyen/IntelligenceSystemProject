@@ -50,8 +50,10 @@ public class ApplianceAgent extends Agent {
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final int HALF_HOUR = 1800000;
-	// private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
-	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+
+	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	// ! Testing
+	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
@@ -164,7 +166,7 @@ public class ApplianceAgent extends Agent {
 		SequentialBehaviour sb = new SequentialBehaviour();
         
         SearchHomeAgent searchHomeAgent = new SearchHomeAgent();
-        
+        /*
         // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
         TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
     
@@ -211,8 +213,8 @@ public class ApplianceAgent extends Agent {
             	}
             }
 		};
-		
-		/*//TODO : @DAVE This code below is for testing (run only 1)
+		*/
+		//TODO : @DAVE This code below is for testing (run only 1)
 		// Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
 		DelayBehaviour communicateToHome = new DelayBehaviour(this, 3000) {
 			protected void handleElapsedTimeout() {
@@ -257,7 +259,7 @@ public class ApplianceAgent extends Agent {
 			        addBehaviour(communicationSequence);
 				}
 			}
-		};*/
+		};
         
         // Trigger service to find home agent
         sb.addSubBehaviour(searchHomeAgent);	 
@@ -454,7 +456,7 @@ public class ApplianceAgent extends Agent {
 	/**
 	 *  ResultReceiver Behavior - Receiving Home Agent Message Inform Negotiation result of it and Retailer Agent
 	 */
-	private class ResultReceiver extends Behaviour {
+	private class ResultReceiver extends CyclicBehaviour {
 
 		private MessageTemplate msgTemplate;
 		private boolean isReceived = false;
@@ -472,17 +474,17 @@ public class ApplianceAgent extends Agent {
 	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
 		        // print out message content
-		        System.out.println(getLocalName()+ ": Received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
+		        System.out.println(getLocalName()+ ": received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
 		        isReceived = true;
 			}
 	    
 	        // block the behaviour from terminating and keep listening to the message
 	        block();
 	    }
-		
+		/*
 		public boolean done() {
 			return isReceived;
-		}
+		}*/
 	}
 	
 	/**
