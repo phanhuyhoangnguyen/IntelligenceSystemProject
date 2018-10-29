@@ -43,7 +43,7 @@ public class ApplianceAgent extends Agent {
 	
 	// For Message Communication to HomeAgent
 	// TODO: change this later
-	private static final int UPATE_DURATION = 15000;				// 15s -> specify the frequency of message sent to Home Agent. 
+	private static final int UPATE_DURATION = 30000;				// 30s -> specify the frequency of message sent to Home Agent. 
 																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
 	// For energyUsage Stimulation
 	private int actualLivedSeconds;									// number of seconds agents have lived since created
@@ -166,7 +166,8 @@ public class ApplianceAgent extends Agent {
         SearchHomeAgent searchHomeAgent = new SearchHomeAgent();
         
         // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
-        TickerBehaviour communicateToHome = new TickerBehaviour(this, UPATE_DURATION) {
+        // 1st tick is set to 1 second
+        TickerBehaviour communicateToHome = new TickerBehaviour(this, 1000) {
     
             protected void onTick() {
             	if (isFinishedNegotiated) {
@@ -181,30 +182,31 @@ public class ApplianceAgent extends Agent {
 					
 			        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
 			        
-		        	// Create message to send to HomeAgent
+		        	// create message to send to HomeAgent
 		            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
 		        	msg.addReceiver(getHomeAgent());
-		            // Set the interaction protocol
+		        	
+		            // set the interaction protocol
 		        	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
 
-		        	// Specify the reply deadline (10 seconds)
+		        	// specify the reply deadline (10 seconds)
 		        	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
 		            
-		    		// Set message content
+		    		// set message content
 		        	msg.setContent(predictionUsage);
 		        	isFinishedNegotiated = false;
 		        	
-			        // Add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
+			        // add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
 		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
 		        	
-		        	// Only listen to Home Agent with Inform message
-		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),
+		        	// only listen to Home Agent with Inform message
+		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
 		        			MessageTemplate.MatchSender(getHomeAgent()));
 
-					// Add behaviour that receives messages
+					// add behaviour that receives messages
 		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
 		        	
-		        	// Add behaviour to report Actual Usage
+		        	// add behaviour to report actual usage
 		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
 		        	
 			        addBehaviour(communicationSequence);
@@ -235,14 +237,17 @@ public class ApplianceAgent extends Agent {
 			}
 		};*/
         
-        // Trigger service to find home agent
+        // trigger service to find home agent
         sb.addSubBehaviour(searchHomeAgent);	 
         
-        // Sending message every 5 seconds
+        // sending message every 5 seconds
         sb.addSubBehaviour(communicateToHome);
         
         // add sequential behaviour to the Agent
         addBehaviour(sb);
+        
+        // after the 1st tick, the update duration is set to 30s
+        communicateToHome.reset(UPATE_DURATION);
 	}
      
 	/**
@@ -448,7 +453,7 @@ public class ApplianceAgent extends Agent {
 	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
 		        // print out message content
-		        System.out.println(getLocalName()+ ": Received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
+		        System.out.println(getLocalName()+ ": received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
 		        isReceived = true;
 			}
 	    
