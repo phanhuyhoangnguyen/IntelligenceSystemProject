@@ -2,6 +2,7 @@ package EnergyAgents;
 
 import jade.core.AID;
 import jade.core.Agent;
+import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.SequentialBehaviour;
@@ -10,14 +11,10 @@ import jade.domain.DFService;
 import jade.domain.FIPAException;
 import jade.domain.FIPANames;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
-import jade.domain.FIPAAgentManagement.FailureException;
-import jade.domain.FIPAAgentManagement.NotUnderstoodException;
-import jade.domain.FIPAAgentManagement.RefuseException;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.proto.AchieveREInitiator;
-import jade.proto.AchieveREResponder;
 
 import java.io.File;
 import java.io.FileReader;
@@ -38,7 +35,7 @@ import database.DbHelper;
 /**
  * ApplianceAgent
  * @author Phan - 101042618
- * @Description The applicant agent compute its energy usage and send it to the HomeAgent periodically
+ * @Description The applicant agent compute its prediction, request Home Agent to buy energy and send its actual usage periodically
  */
 public class ApplianceAgent extends Agent {
 	private String applianceName;
@@ -53,8 +50,9 @@ public class ApplianceAgent extends Agent {
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final int HALF_HOUR = 1800000;
-	//private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
+	// private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
 	private static final int secondsInADay = 86400;					// number of seconds in a day
@@ -68,8 +66,7 @@ public class ApplianceAgent extends Agent {
 	private int testCounter = 0;
 	
 	public ApplianceAgent () {
-		
-		// this is set for stimulating the Appliance Agent has lived for at least 30 mins (1 row in CSV)
+		// Appliance Agent has lived for at least 30 mins (1 row in CSV)
 		this.actualLivedSeconds = HALF_HOUR;
 		intializeAppliantDictionary();
 	}
@@ -103,15 +100,15 @@ public class ApplianceAgent extends Agent {
 	    dfd.addServices(sd); // An agent can register one or more services
 	    
 	    try {
-            // Search for the old DFD and deregister it
+            // search for the old DFD and deregister it
             DFAgentDescription list[] = DFService.search( this, dfd );
             if ( list.length>0 ) 
             	DFService.deregister(this);
             
-            // Add this Service Description to DFAgentDescription
+            // add this Service Description to DFAgentDescription
             dfd.addServices(sd);
 
-            // Register Agent's Service with DF
+            // register Agent's Service with DF
             DFService.register(this, dfd);
         }
 
@@ -124,14 +121,14 @@ public class ApplianceAgent extends Agent {
     private DFAgentDescription[] getService(String service) {
 		DFAgentDescription dfd = new DFAgentDescription();
 		
-    	// Create service template for search
+    	// create service template for search
         ServiceDescription sd = new ServiceDescription();
         sd.setType(service);
 
-        // Add Service Template to DFAgentDescription 
+        // add Service Template to DFAgentDescription 
         dfd.addServices(sd);
 
-        // Search Agent with the target services using DF
+        // search Agent with the target services using DF
         try {
                 DFAgentDescription[] result = DFService.search(this, dfd);
                 return result;
@@ -222,10 +219,17 @@ public class ApplianceAgent extends Agent {
 				if (true) {
 					SequentialBehaviour communicationSequence = new SequentialBehaviour();
 					// Register state Predicting and Request to buy
-					communicationSequence.addSubBehaviour(new reportingEnergyUsagePrediction());
+					communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction());
 					// Register state Reporting Actual Usage
-					//communicationSequence.addSubBehaviour(new reportingActualEnergyUsage());
+					//communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
 					
+
+					// Only listen to Home Agent with Inform message
+		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
+		        			MessageTemplate.MatchSender(getHomeAgent()));
+
+					// Create behaviour that receives messages
+		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
 					addBehaviour(communicationSequence);
 				}
 			}
@@ -246,7 +250,7 @@ public class ApplianceAgent extends Agent {
 	 */
     private class SearchHomeAgent extends OneShotBehaviour {
     	public void action() {
-    		// Search for home agent
+    		// search for home agent
     		setHomeAgent(searchForHomeAgent(HomeAgentService));
     	}
     }
@@ -305,7 +309,7 @@ public class ApplianceAgent extends Agent {
 	 */
 	private AID searchForHomeAgent(String service) {
 		AID homeAgent = null;
-	    // Search for HomeAgent via its service
+	    // search for HomeAgent via its service
 	   	DFAgentDescription[] agent = getService(service);
 	    if (agent.length > 0) {
 	    	homeAgent = agent[0].getName();
@@ -323,19 +327,20 @@ public class ApplianceAgent extends Agent {
     protected void sendActualUsage() {
     	String energyConsumed = Double.toString(getActualEnergyUsage(USAGE_DURATION));
         	
-    	// Send messages to home agents
+    	// send messages to home agents
 	    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
 	    msg.setContent(energyConsumed);
 	    msg.addReceiver(getHomeAgent());
 	    
-	    // Send Message
+	    // send Message
 	    System.out.println(getLocalName() + ": Sending message " + msg.getContent() + " to ");
 	    
 	    Iterator receivers = msg.getAllIntendedReceiver();
 	    while(receivers.hasNext()) {
 	            System.out.println(((AID)receivers.next()).getLocalName());
 	    }
-	    // send message
+	    
+	    // send message with actual energy usage
 	    send(msg);
     }
 	
@@ -351,7 +356,7 @@ public class ApplianceAgent extends Agent {
 		File file = new File(pathToCSV);
 		if(file.exists()) {
 		    try {
-		    	// Create an object of filereader class 
+		    	// create an object of filereader class 
 		        FileReader filereader = new FileReader(pathToCSV); 
 		  
 		        // create csvReader object to read the csv file and skip already read Line
@@ -365,7 +370,7 @@ public class ApplianceAgent extends Agent {
 		        int noOfRowsToRead = duration / HALF_HOUR;
 		        
 		        for (int i = 0; i < noOfRowsToRead; i++) {
-		        	// Each line is read as 1 array
+		        	// each line is read as 1 array
 		        	nextRecord = csvReader.readNext();
 		        	
 		        	 // predicted value is the last observation from the values in CSV file
@@ -393,7 +398,7 @@ public class ApplianceAgent extends Agent {
 		File file = new File(pathToCSV);
 		if(file.exists()) {
 		    try {
-		    	// Create an object of FileReader class 
+		    	// create an object of FileReader class 
 		        FileReader filereader = new FileReader(pathToCSV); 
 		  
 		        // create csvReader object to read the csv file and skip already read Line
@@ -404,13 +409,13 @@ public class ApplianceAgent extends Agent {
 		        
 		        String[] nextRecord;
 		        
-		        // Each row is for 30 min -> if timeDuration is 30 mins (1800s) then 1 rows will be read
+		        // each row is for 30 min -> if timeDuration is 30 mins (1800s) then 1 rows will be read
 		        int noOFRowsToRead = timeDuration / HALF_HOUR;
 		        
 		        for (int i = 0; i < noOFRowsToRead; i++) {
-		        	// Each line is read as 1 array
+		        	// each line is read as 1 array
 		        	nextRecord = csvReader.readNext();
-		        	// Calculate total usage
+		        	// calculate total usage
 		        	totalUsage += Double.parseDouble(nextRecord[dataIndex]);
 		        	
 		        }
@@ -425,9 +430,10 @@ public class ApplianceAgent extends Agent {
 	/**
 	 *  ResultReceiver Behavior - Receiving Home Agent Message Inform Negotiation result of it and Retailer Agent
 	 */
-	private class ResultReceiver extends CyclicBehaviour {
+	private class ResultReceiver extends Behaviour {
 
 		private MessageTemplate msgTemplate;
+		private boolean isReceived = false;
 		
 		public ResultReceiver(Agent a, MessageTemplate msgTemplate) {
 			super (a);
@@ -436,18 +442,23 @@ public class ApplianceAgent extends Agent {
 		
 		@Override
 		public void action() {
-			System.out.println(getLocalName() + ": Waiting for message");
+			System.out.println(getLocalName() + ": Waiting for Result Message....");
 
-			// Retrieve message from message queue if there is
+			// retrieve message from message queue if there is
 	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
-		        // Print out message content
-		        System.out.println(getLocalName()+ ": Received response " + msg.getContent() + " from " + msg.getSender().getLocalName());
-	       }
+		        // print out message content
+		        System.out.println(getLocalName()+ ": Received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
+		        isReceived = true;
+			}
 	    
-	        // Block the behaviour from terminating and keep listening to the message
+	        // block the behaviour from terminating and keep listening to the message
 	        block();
 	    }
+		
+		public boolean done() {
+			return isReceived;
+		}
 	}
 	
 	/**

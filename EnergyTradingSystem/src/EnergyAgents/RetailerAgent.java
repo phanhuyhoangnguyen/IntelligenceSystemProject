@@ -540,6 +540,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 							
 							// accept if in range
 							if ( offer >= negoPrice ) {
+								negoPrice = offer;
 								System.out.println( agentName + " sends accept message for $" + offer);
 								printGUI(agentName + " accept the offer for $" + offer);
 								reply.setPerformative(ACLMessage.AGREE);
@@ -565,7 +566,6 @@ public class RetailerAgent extends Agent implements GUIListener{
 					// step 3: receive the reception from home agent, accept or agree
 					case ACLMessage.ACCEPT_PROPOSAL:
 					case ACLMessage.AGREE:
-						// Timeout
 						System.out.println( agentName + " completed for $" + negoPrice);
 						printGUI( agentName + " completed for <b>$" + negoPrice + "</b>");
 						// TODO: sign new contract
