@@ -55,9 +55,6 @@ public class HomeAgent extends Agent implements GUIListener {
     // Tola: check if get all appliances
     private boolean isApplianceFinished;
 
-    // For waiting
-    Random rand = newRandom();
-
     // Best offer
     private ACLMessage bestOffer;
 
@@ -83,17 +80,19 @@ public class HomeAgent extends Agent implements GUIListener {
 
         // For negotiation
         this.bestOffer = null;
-        this.bestPrice = this.budgetLimit;
     }
 
     private void resetDefault() {
         this.totalPredictedEnergyConsumption = 0;
         this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
+        this.budgetLimit = getRandomDouble(3500, 5000);
+
+        // Conditions for communication
+        this.hasNegotiationFinished = false;
 
         // For negotiation
         this.bestOffer = null;
-        this.bestPrice = this.budgetLimit;
     }
 
     /**
@@ -197,40 +196,25 @@ public class HomeAgent extends Agent implements GUIListener {
                 myAgent.addBehaviour(retailerSequenceBehaviour);
             }
 
-            // Method to determine how to respond to request
-            if (true) {
-                // Agent agrees to perform the action. Note that in the FIPA-Request
-                // protocol the AGREE message is optional. Return null if you
-                // don't want to send it.
-                System.out.println(getLocalName() + ": Agreeing to the request and responding with AGREE");
-                ACLMessage agree = request.createReply();
-                agree.setPerformative(ACLMessage.AGREE);
-
-                return agree;
-            } else {
-                // Agent refuses to perform the action and responds with a REFUSE
-                System.out.println("Agent " + getLocalName() + ": Refuse");
-                throw new RefuseException("check-failed");
-            }
-
+            // Respond to the request
+            // Agent agrees to perform the action. Note that in the FIPA-Request
+            // protocol the AGREE message is optional. Return null if you
+            // don't want to send it.
+            System.out.println(getLocalName() + ": Agreeing to the request and responding with AGREE");
+            ACLMessage agree = request.createReply();
+            agree.setPerformative(ACLMessage.AGREE);
+            return agree;
         }
 
         // If the agent agreed to the request received, then it has to perform the
         // associated action and return the result of the action
         protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response)
                 throws FailureException {
-            // Perform the action (dummy method)
-            if (true) {
-                System.out.println(getLocalName() + ": Action successfully performed, informing initiator");
-                ACLMessage inform = request.createReply();
-                inform.setPerformative(ACLMessage.INFORM);
-                inform.setContent("successfully");
-                return inform;
-            } else {
-                // Action failed
-                System.out.println(getLocalName() + ": Action failed, informing initiator");
-                throw new FailureException("unexpected-error");
-            }
+            System.out.println(getLocalName() + ": Action successfully performed, informing initiator");
+            ACLMessage inform = request.createReply();
+            inform.setPerformative(ACLMessage.INFORM);
+            inform.setContent("successfully");
+            return inform;
         }
     }
 
@@ -382,8 +366,8 @@ public class HomeAgent extends Agent implements GUIListener {
          * 2ND --- Get the orders, choose the best deal and decide whether ask for a
          * better deal
          */
-        // Delay 2s before sending the request
-        retailerSeQue.addSubBehaviour(new DelayBehaviour(this, rand.nextInt(2000)) {
+        // Delay 3s before sending the request
+        retailerSeQue.addSubBehaviour(new DelayBehaviour(this, 3000) {
             public void handleElapsedTimeout() {
                 if (bestOffer == null) {
                     System.out.println("No offers.");
@@ -441,12 +425,6 @@ public class HomeAgent extends Agent implements GUIListener {
         // Tola : handle the counter offer
         retailerSeQue.addSubBehaviour(new MyReceiverBehaviour(this, 0, negoTemplate, "3RD") {
             public void handle(ACLMessage message) {
-                /*
-                 * if( bestPrice <= idealBestPrice) { System.out.println("");
-                 * System.out.println("3RD"); // no need to re-negotiate
-                 * System.out.println("Best price ("+bestPrice+") <= ideal budget limit ("
-                 * +idealBestPrice+")"); return; }
-                 */
                 if (message != null && !hasNegotiationFinished) {
                     System.out.println("");
                     System.out.println("3RD");
@@ -594,7 +572,7 @@ public class HomeAgent extends Agent implements GUIListener {
                 }
             }
         });
-
+       
         // Send result back to the retailer agent
         retailerSeQue.addSubBehaviour(new SendResultToApplianceBehaviour());
 
@@ -675,6 +653,7 @@ public class HomeAgent extends Agent implements GUIListener {
                 }
             }
         });
+        
     }
 
     /*---- Ultility methods to access DF ---- */
@@ -771,19 +750,6 @@ public class HomeAgent extends Agent implements GUIListener {
     String cidBase;
 
     /**
-     * This method is used to extract the consumption based on the total demand
-     * 
-     * @param demand
-     * @param duartion
-     * @return
-     */
-    private double extractToBestPrice(double demand, double budget) {
-        double bestPrice;
-        bestPrice = budget / demand;
-        return bestPrice;
-    }
-
-    /**
      * This method is used to generate unique ID for each conversations
      * 
      * @return
@@ -793,15 +759,6 @@ public class HomeAgent extends Agent implements GUIListener {
             cidBase = getLocalName() + hashCode() + System.currentTimeMillis() % 10000 + "_";
         }
         return cidBase + (cidCnt++);
-    }
-
-    /**
-     * This method is used to generate unique Random generator
-     * 
-     * @return
-     */
-    private Random newRandom() {
-        return new Random(hashCode() + System.currentTimeMillis());
     }
 
     /**
