@@ -50,8 +50,10 @@ public class ApplianceAgent extends Agent {
 	private Map <String, Integer> applicantDict;					// hold agent name and its index for searching its usage in data file
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final int HALF_HOUR = 1800000;
-	// private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
-	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+
+	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	// ! Testing
+	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
@@ -210,25 +212,54 @@ public class ApplianceAgent extends Agent {
             }
 		};
 		
-		/*//TODO : @DAVE This code below is for testing (run only 1)
+		/*
+		//TODO : @DAVE This code below is for testing (run only 1)
 		// Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
 		DelayBehaviour communicateToHome = new DelayBehaviour(this, 3000) {
 			protected void handleElapsedTimeout() {
 				if (true) {
 					SequentialBehaviour communicationSequence = new SequentialBehaviour();
-					// Register state Predicting and Request to buy
-					communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction());
-					// Register state Reporting Actual Usage
-					//communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
+		        	
+		        	String predictionUsage;
+					double predictedValue = getUsagePrediction(USAGE_DURATION);
 					
+					// round up the double value to 2 decimal places
+					DecimalFormat df = new DecimalFormat("#.##");
+					predictionUsage = df.format(predictedValue);
+					
+			        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
+			        
+		        	// create message to send to HomeAgent
+		            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+		        	msg.addReceiver(getHomeAgent());
+		        	
+		            // set the interaction protocol
+		        	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
 
-					// Only listen to Home Agent with Inform message
-		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
-		        			MessageTemplate.MatchSender(getHomeAgent()));
-
-					// Create behaviour that receives messages
-		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
-					addBehaviour(communicationSequence);
+		        	// specify the reply deadline (10 seconds)
+		        	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
+		            
+		    		// set message content
+		        	msg.setContent(predictionUsage);
+		        	isFinishedNegotiated = false;
+		        	
+			        // add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
+		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
+		        	
+		        	// add behaviour to report actual usage
+		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
+		        	
+			        addBehaviour(communicationSequence);
+			        
+			    	// only listen to Home Agent with Inform message
+			    	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
+			    			MessageTemplate.MatchSender(getHomeAgent()));
+			        
+					// add behaviour that receives messages
+			    	addBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
+			        
+			        // after the 1st tick, the update duration is set to 30s
+			        this.reset(UPATE_DURATION);
 				}
 			}
 		};*/
@@ -344,7 +375,7 @@ public class ApplianceAgent extends Agent {
     	String energyConsumed = Double.toString(getActualEnergyUsage(USAGE_DURATION));
         	
     	// send messages to home agents
-	    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+	    ACLMessage msg = new ACLMessage(ACLMessage.INFORM_REF);
 	    msg.setContent(energyConsumed);
 	    msg.addReceiver(getHomeAgent());
 	    
@@ -444,7 +475,7 @@ public class ApplianceAgent extends Agent {
 	/**
 	 *  ResultReceiver Behavior - Receiving Home Agent Message Inform Negotiation result of it and Retailer Agent
 	 */
-	private class ResultReceiver extends Behaviour {
+	private class ResultReceiver extends CyclicBehaviour {
 
 		private MessageTemplate msgTemplate;
 		private boolean isReceived = false;
@@ -475,10 +506,10 @@ public class ApplianceAgent extends Agent {
 	        // block the behaviour from terminating and keep listening to the message
 	        block();
 	    }
-		
+		/*
 		public boolean done() {
 			return isReceived;
-		}
+		}*/
 	}
 	
 	/**

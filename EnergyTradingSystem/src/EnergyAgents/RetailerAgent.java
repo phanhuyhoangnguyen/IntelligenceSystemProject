@@ -39,11 +39,14 @@ public class RetailerAgent extends Agent implements GUIListener{
 	// charge per hour, unit price in cent
 	private double usageCharge;
 	
+	// price always not change
+	private double fixedPrice;
+	
 	// charge is over the meter of the contract
 	private double overCharge;
 	
-	// current usage
-	private double currentUsage;
+	// demand usage
+	private double demandUsage;
 	
 	// negotiation price in cent per KWH, time in second
 	
@@ -61,7 +64,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 	
 	// negotiation mechanism: by time, on demand
 	public static enum Mechanism {
-		GENERAL ,BY_TIME ,ON_DEMAND
+		RANDOM ,ON_DEMAND, FIXED_PRICE
 	}
 	private Mechanism negoMechanism;
 	
@@ -92,15 +95,17 @@ public class RetailerAgent extends Agent implements GUIListener{
 		agentName = "Retailer";
 		agentType = "Retailer";
 		
-		currentUsage = 0;
+		demandUsage = 0;
+		fixedPrice = 30.0; // always
 		usageCharge = getRandomDouble(20.0, 30.0);	// 20 to 30 cents per kwh
-		overCharge = usageCharge + (usageCharge * 0.05);	// plus 5%
+		overCharge = usageCharge + (usageCharge * 0.10);	// plus 10%
+		
 		
 		negoPrice = calcNegoPrice(0);	// calculate negoPrice based on demand
 		negoLimitPrice = truncatedDouble( negoPrice - (negoPrice * 0.15) );	// eg. no more than 15%
 		negoIterateReduceBy = 0.2; // reduce 0.2 percent in each counter
 		
-		negoMechanism = Mechanism.GENERAL;
+		negoMechanism = Mechanism.RANDOM;
 		negoCounterOffer = 3;
 		negoCounter = 0;
 		negoTimeWait = 15;	// 15 seconds
@@ -141,6 +146,12 @@ public class RetailerAgent extends Agent implements GUIListener{
 		this.negoPrice = negoStartPrice;
 	}
 
+	public double getFixedPrice() {
+		return fixedPrice;
+	}
+	public void setFixedPrice(double fixedPrice) {
+		this.fixedPrice = fixedPrice;
+	}
 
 	public Mechanism getNegotiationMechanism() {
 		return negoMechanism;
@@ -220,7 +231,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 	 */
 	private void resetNegotiation() {
 		// reset negotiate
-		currentUsage = 0;
+		demandUsage = 0;
 		negoPrice = usageCharge;
 		negoCounter = 0;
 		negoTimeStart = System.currentTimeMillis() / 1000;
@@ -239,13 +250,19 @@ public class RetailerAgent extends Agent implements GUIListener{
 		}
 		// if no reach the limit counter
 		double nextOffer = 0;
-		if ( negoCounter < negoCounterOffer ) {
-			double reducePercentage = (negoCounter + 1) * negoIterateReduceBy;
-			nextOffer = negoPrice - (negoPrice * reducePercentage);
-			// count the offer
-			negoCounter++;
+		switch( negoMechanism ) {
+			case FIXED_PRICE:
+				nextOffer = fixedPrice;
+				break;
+			default:
+				if ( negoCounter < negoCounterOffer ) {
+					double reducePercentage = (negoCounter + 1) * negoIterateReduceBy;
+					nextOffer = negoPrice - (negoPrice * reducePercentage);
+				}
 		}
 		
+		// count the offer
+		negoCounter++;
 		return truncatedDouble(nextOffer);
 	}
 
@@ -261,7 +278,9 @@ public class RetailerAgent extends Agent implements GUIListener{
 			return price;
 		}
 		switch( negoMechanism ) {
-			case BY_TIME:
+			case FIXED_PRICE:
+				price = fixedPrice;
+				break;
 			case ON_DEMAND:
 				if ( demand >= 150 ) {
 					price *= 0.2;
@@ -476,7 +495,8 @@ public class RetailerAgent extends Agent implements GUIListener{
 						// calculate negotiation price based on demand
 						try {
 							double demand = Double.parseDouble(content);
-							negoPrice = calcNegoPrice(demand);
+							demandUsage = demand;
+							negoPrice = calcNegoPrice(demandUsage);
 						}catch ( NumberFormatException nfe) {
 							nfe.printStackTrace();
 							System.out.println( agentName + " not understood.");
@@ -581,7 +601,32 @@ public class RetailerAgent extends Agent implements GUIListener{
 						reply.setPerformative(ACLMessage.REFUSE);
 						reply.setContent("0");
 						break;
-								
+					
+					case ACLMessage.QUERY_REF:
+						try {
+							double  actualPrice = Double.parseDouble(content);
+							// over charge
+							if ( actualPrice > demandUsage ) {
+								reply.setPerformative(ACLMessage.QUERY_REF);
+								reply.setContent(String.valueOf(overCharge));
+							}else {
+								reply.setPerformative(ACLMessage.QUERY_REF);
+								reply.setContent("0");
+							}
+							break;	
+						}catch ( NumberFormatException nfe) {
+							nfe.printStackTrace();
+							System.out.println( agentName + " not understood.");
+							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+							reply.setContent("NOT UNDERSTOOD");
+						}catch ( NullPointerException npe) {
+							npe.printStackTrace();
+							System.out.println( agentName + " not understood.");
+							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
+							reply.setContent("NOT UNDERSTOOD");
+						}
+						break;
+					
 					default:
 						// do nothing
 						reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);

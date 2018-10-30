@@ -83,23 +83,28 @@ public class RetailerGUIDetails {
 			inputPane.setLayout(new GridLayout(0, 2, 2, 5));	// row,col, vspace, hspace
 			inputPane.setBorder(new EmptyBorder(5, 15, 10, 10));
 			
-			JLabel l1 = new JLabel("Usage Charge Price :", SwingConstants.RIGHT);
+			JLabel l1 = new JLabel("Usage Charge (KWH) :", SwingConstants.RIGHT);
 			l1.setPreferredSize(l1.getPreferredSize());
 			inputPane.add(l1);
-			
 			JTextField txtUsageCharge = new JTextField(16);
 			txtUsageCharge.setText( Double.toString(myAgent.getUsageCharge()) );
 			inputPane.add(txtUsageCharge);
 			
 			
-			JLabel l2 = new JLabel("Over Charge Price :", SwingConstants.RIGHT);
+			JLabel l2 = new JLabel("Fixed Price (KWH) :", SwingConstants.RIGHT);
 			l2.setPreferredSize(l2.getPreferredSize());
 			inputPane.add(l2);
+			JTextField txtFixedPrice = new JTextField(16);
+			txtFixedPrice.setText( Double.toString(myAgent.getFixedPrice()) );
+			inputPane.add(txtFixedPrice);
 			
+
+			JLabel l2a = new JLabel("Over Charge Price :", SwingConstants.RIGHT);
+			l2a.setPreferredSize(l2a.getPreferredSize());
+			inputPane.add(l2a);
 			JTextField txtOverCharge = new JTextField(16);
 			txtOverCharge.setText(Double.toString(myAgent.getOverCharge()));
 			inputPane.add(txtOverCharge);
-			
 			
 			
 			JLabel l3 = new JLabel("Limit Negotiation Price :", SwingConstants.RIGHT);
@@ -131,7 +136,6 @@ public class RetailerGUIDetails {
 			inputPane.add(txtWaitTime);
 			
 			
-			/*
 			JLabel l6 = new JLabel("Mechanism :", SwingConstants.RIGHT);
 			l6.setPreferredSize(l6.getPreferredSize());
 			inputPane.add(l6);
@@ -147,7 +151,7 @@ public class RetailerGUIDetails {
 					break;
 				}
 			}
-			*/
+
 			
 			// button group
 			JPanel buttonPane = new JPanel();
@@ -164,13 +168,14 @@ public class RetailerGUIDetails {
 				public void actionPerformed(ActionEvent e) {
 					try {
 						myAgent.setUsageCharge(Double.parseDouble(txtUsageCharge.getText()));
+						myAgent.setFixedPrice(Double.parseDouble(txtFixedPrice.getText()));
 						myAgent.setOverCharge(Double.parseDouble(txtOverCharge.getText()));
 						myAgent.setNegotiationLimitPrice(Double.parseDouble(txtLimitPrice.getText()));
 						myAgent.setNegotiationCounterOffer(Integer.parseInt(txtCounterOffer.getText()));
 						myAgent.setNegotiationTimeWait(Long.parseLong(txtWaitTime.getText()));
 						
-						//RetailerAgent.Mechanism mechanism = RetailerAgent.Mechanism.valueOf(cbMechanism.getSelectedItem().toString());
-						//myAgent.setNegotiationMechanism(mechanism);
+						RetailerAgent.Mechanism mechanism = RetailerAgent.Mechanism.valueOf(cbMechanism.getSelectedItem().toString());
+						myAgent.setNegotiationMechanism(mechanism);
 						
 						
 						// test
