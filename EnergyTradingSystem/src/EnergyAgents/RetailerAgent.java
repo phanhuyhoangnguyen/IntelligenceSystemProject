@@ -607,9 +607,11 @@ public class RetailerAgent extends Agent implements GUIListener{
 							double  actualPrice = Double.parseDouble(content);
 							// over charge
 							if ( actualPrice > demandUsage ) {
+								System.out.println("Send overcharge price: $"+ overCharge);// @Dave
 								reply.setPerformative(ACLMessage.QUERY_REF);
 								reply.setContent(String.valueOf(overCharge));
 							}else {
+								System.out.println("No overchage");//@Dave
 								reply.setPerformative(ACLMessage.QUERY_REF);
 								reply.setContent("0");
 							}
