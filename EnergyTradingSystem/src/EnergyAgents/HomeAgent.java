@@ -73,8 +73,6 @@ public class HomeAgent extends Agent implements GUIListener {
         this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
         this.budgetLimit = getRandomDouble(3500, 5000);
-        // this.idealBestPrice = truncatedDouble( this.budgetLimit * 0.7); // 70% of the
-        // budget
 
         // Agent name and type
         this.agentName = "Home";
@@ -86,14 +84,12 @@ public class HomeAgent extends Agent implements GUIListener {
         // For negotiation
         this.bestOffer = null;
         this.bestPrice = this.budgetLimit;
-        // this.bestPrice = this.budgetLimit / this.totalPredictedEnergyConsumption;
     }
 
     private void resetDefault() {
         this.totalPredictedEnergyConsumption = 0;
         this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
-        // this.idealBestPrice = this.budgetLimit * 0.7; // 70% of the budget
 
         // For negotiation
         this.bestOffer = null;
@@ -113,8 +109,6 @@ public class HomeAgent extends Agent implements GUIListener {
 
     public void setBudgetLimit(double newBudgetLimit) {
         this.budgetLimit = newBudgetLimit;
-        // this.idealBestPrice = truncatedDouble( this.budgetLimit * 0.7); // 70% of the
-        // budget
     }
 
     /**
@@ -331,7 +325,7 @@ public class HomeAgent extends Agent implements GUIListener {
                 printGUI("<font color='black'>---- NEGOTIATION ---- </font> ");
                 printGUI("Home Budget: <b>$" + budgetLimit + "</b>");
                 printGUI("Total Consumption: <b>" + totalPredictedEnergyConsumption + "</b>");
-                printGUI("Ideal Best Price: <b>$" + idealBestPrice+"</b>");
+                printGUI("Ideal Best Price: <b>$" + truncatedDouble(idealBestPrice)+"</b>");
                 printGUI("");
             }
         });
@@ -384,7 +378,6 @@ public class HomeAgent extends Agent implements GUIListener {
         ;
 
         send(messageRetailer);
-
         /**
          * 2ND --- Get the orders, choose the best deal and decide whether ask for a
          * better deal
@@ -394,7 +387,6 @@ public class HomeAgent extends Agent implements GUIListener {
             public void handleElapsedTimeout() {
                 if (bestOffer == null) {
                     System.out.println("No offers.");
-                    printGUI("There is no offer.");
                 } else {
                     System.out.println("");
                     System.out.println("2ND");
@@ -535,7 +527,7 @@ public class HomeAgent extends Agent implements GUIListener {
         // have 3s before timeout
         retailerSeQue.addSubBehaviour(new MyReceiverBehaviour(this, 0, negoTemplate, "4TH") {
             public void handle(ACLMessage message) {
-                if (message != null) {
+                if (message != null &&  !hasNegotiationFinished) {
                     System.out.println("");
                     System.out.println("4TH");
                     System.out.println("Got " + ACLMessage.getPerformative(message.getPerformative()) + " from "
@@ -595,8 +587,8 @@ public class HomeAgent extends Agent implements GUIListener {
                     printGUI("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
                     printGUI("Best Price: <b>$" + bestPrice + "</b>");
                     printGUI("Best Offer: <b>"+ bestOffer.getSender().getLocalName()+"</b>");
-                    printGUI("Amount of spent money: <b>$" + spentMoney + "</b>");
-                    printGUI("Remaining Budget: <b>$" + remainingBudget + "</b>");
+                    printGUI("Amount of spent money: <b>$" + truncatedDouble(spentMoney) + "</b>");
+                    printGUI("Remaining Budget: <b>$" + truncatedDouble(remainingBudget) + "</b>");
                 } else {
                     System.out.println("Negotiation has not finished yet!!");
                 }
@@ -632,36 +624,50 @@ public class HomeAgent extends Agent implements GUIListener {
         // Get the overcharge price and final report
         retailerSeQue.addSubBehaviour(new MyReceiverBehaviour(this, 2000, negoTemplate, "Get Overcharge Price Stage") {
             public void handle(ACLMessage message){
-                if(message != null){
+                if(message != null && bestOffer!=null && hasNegotiationFinished){
                     System.out.println("\nOvercharge Stage");
                     System.out.println(getLocalName() + ": received overcharge price, which is $"+message.getContent()+ " from " + message.getSender().getLocalName());
 
                     double overchargePrice = Double.parseDouble(message.getContent());
                     System.out.println("---------- Final Report ----------");
-                    printGUI("<font color='black'>---- Final Report ----</font>");
+                    printGUI("\n<font color='black'>---- Final Report ----</font>");
+                    printGUI("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
+                    printGUI("Total Actual Comsumption: " + totalActualedEnergyConsumption);
+                    printGUI("Best Price: <b>$" + bestPrice + "</b>");
+                    printGUI("Best Offer: <b>"+ bestOffer.getSender().getLocalName()+"</b>");
+
+                    System.out.println("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
+                    System.out.println("Total Actual Comsumption: " + totalActualedEnergyConsumption);
                     if(overchargePrice != 0){// get overchage
-                        System.out.println("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
-                        System.out.println("Total Actual Comsumption: " + totalActualedEnergyConsumption);
-
+                        //Before Overcharge GUI
+                        printGUI("");
+                        printGUI("<b>Before adding overcharge </b>");
+                        printGUI("Overcharge Price: <b>$" + overchargePrice + "</b>");
+                        printGUI("Amount of spent money: <b>$" + truncatedDouble(spentMoney) + "</b>");
+                        printGUI("Remaining Budget: <b>$" + truncatedDouble(remainingBudget) + "</b>");
+                        
+                        
                         System.out.println("Overcharge Price: $"+overchargePrice);
-
                         spentMoney = spentMoney + overchargePrice;
                         System.out.println("Amount of spent money: $"+spentMoney);
-
                         remainingBudget = budgetLimit - spentMoney;
                         System.out.println("Remaining Budget: $"+remainingBudget);
 
+                        printGUI("");
+                        printGUI("<b>After adding overcharge </b>");
+                        printGUI("Amount of spent money: <b>$" + truncatedDouble(spentMoney) + "</b>");
+                        printGUI("Remaining Budget: <b>$" + truncatedDouble(remainingBudget) + "</b>");
                         
                         
                     }else{// No overcharge
-                        System.out.println("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
-                        System.out.println("Total Actual Comsumption: " + totalActualedEnergyConsumption);
-
                         System.out.println("No Overcharge");
-
                         System.out.println("Amount of spent money: $"+spentMoney);
-
                         System.out.println("Remaining Budget: $"+remainingBudget);
+                        
+                        //Print GUI
+                        printGUI("<b>No overcharge </b>");
+                        printGUI("Amount of spent money: <b>$" + truncatedDouble(spentMoney) + "</b>");
+                        printGUI("Remaining Budget: <b>$" + truncatedDouble(remainingBudget) + "</b>");
                     }
                 }
                 else{
