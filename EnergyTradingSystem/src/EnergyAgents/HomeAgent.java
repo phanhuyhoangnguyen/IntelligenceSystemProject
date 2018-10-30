@@ -38,7 +38,7 @@ public class HomeAgent extends Agent implements GUIListener
 
     //Total energy consumption get from appliance agent
     private float totalPredictedEnergyConsumption;
-    private float totalActualedEnergyConsumption;
+    private double totalActualedEnergyConsumption;
     private int applianceCount;
     private int totalAppliances;
 
@@ -265,7 +265,7 @@ public class HomeAgent extends Agent implements GUIListener
     }
 
     //Get actual total consumption from appliance agents
-    private class GetActualConsumptionBehaviour extends Behaviour {
+    private class GetActualConsumptionBehaviour extends CyclicBehaviour {
 
         private MessageTemplate msgTemplate;
         private int count;
@@ -278,30 +278,23 @@ public class HomeAgent extends Agent implements GUIListener
 		
 		@Override
 		public void action() {
-			System.out.println("GET ACTUAL CONSUMPTION: "+ getLocalName() + ": Waiting for acutal consumption....");
+			System.out.println("\nGET ACTUAL CONSUMPTION: "+ getLocalName() + ": Waiting for acutal consumption....");
 
 			// Retrieve message from message queue if there is
 	        ACLMessage msg= receive(this.msgTemplate);
-	        if (msg!=null) {
+	        if (msg!=null && count!=totalAppliances) {
 		        // Print out message content
                 System.out.println("GET ACTUAL CONSUMPTION: "+getLocalName()+ ": Received consumption " + msg.getContent() + " from " + msg.getSender().getLocalName());
                 totalActualedEnergyConsumption += Double.parseDouble(msg.getContent());
                 System.out.println("TOTAL ACTUAL CONSUMPTION: "+ totalActualedEnergyConsumption);
+                System.out.println("Count: "+ count);
                 ++count;
             }
 	        // Block the behaviour from terminating and keep listening to the message
+            printGUI("Total Actual Consumption: <b>$"+totalActualedEnergyConsumption+"</b>");
             block();
         }
         
-        @Override
-        public boolean done(){
-            return count == totalAppliances;
-        }
-
-        public int onEnd() {
-            System.out.println(this.getBehaviourName() + ": I have finished executing");
-            return super.onEnd();
-        }
 	}
     
     /***
@@ -342,7 +335,7 @@ public class HomeAgent extends Agent implements GUIListener
             messageRetailer.addReceiver(retailer);
             
             // Got 5s to get the receiver the offers before timeout
-            retailerSeQue.addSubBehaviour( new MyReceiverBehaviour(this, 5000, template,"1ST"){
+            retailerSeQue.addSubBehaviour( new MyReceiverBehaviour(this, 0, template,"1ST"){
                 public void handle(ACLMessage message)
                 {
                     if(message!=null){
@@ -433,7 +426,7 @@ public class HomeAgent extends Agent implements GUIListener
         
         /** 3RD --- Get the counter offer if have from the retailer agent */
         //Tola : handle the counter offer
-        retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 5000, template, "3RD" ) {
+        retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 0, template, "3RD" ) {
 			public void handle( ACLMessage message) {
                 /*
 				if( bestPrice <= idealBestPrice) {
@@ -520,7 +513,7 @@ public class HomeAgent extends Agent implements GUIListener
 
         // 4TH --- Final decision 
         // have 3s before timeout
-        retailerSeQue.addSubBehaviour( new MyReceiverBehaviour( this, 7000, template, "4TH") 
+        retailerSeQue.addSubBehaviour( new MyReceiverBehaviour( this, 0, template, "4TH") 
 				{
 					public void handle( ACLMessage message) 
 					{  
@@ -596,7 +589,7 @@ public class HomeAgent extends Agent implements GUIListener
 
         MessageTemplate actualMessageTemplate =MessageTemplate.MatchPerformative(ACLMessage.INFORM_REF);
         //Receive actual consumption
-        //retailerSeQue.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
+        retailerSeQue.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
     }
 
     
