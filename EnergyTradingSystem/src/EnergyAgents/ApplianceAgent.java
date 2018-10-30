@@ -21,7 +21,6 @@ import java.io.FileReader;
 import java.text.DecimalFormat; 
 import java.util.Date;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Vector;
 
@@ -51,20 +50,20 @@ public class ApplianceAgent extends Agent {
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final int HALF_HOUR = 1800000;
 
-	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	// ! Testing
-	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
+	//private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
 	private static final int secondsInADay = 86400;					// number of seconds in a day
 	
-	// For Home Agent
+	// For dealing with Home Agent
 	private AID homeAgent;
 	private static final String HomeAgentService = "Home";
-	private boolean requestIsMet = true;
+	private boolean communicateIsFinished = true;
 	
-	// For GUI Command
+	// For manipulating Ticker Behaviour From GUI
 	private boolean isPausing;										// pause the operations executed in the ticker behaviour
 	
 	public ApplianceAgent () {
@@ -86,7 +85,7 @@ public class ApplianceAgent extends Agent {
 	        sd.setName(getApplianceName());
 	        register(sd);
 	        
-	        addBehaviour(new WaitForCommand());
+	        addBehaviour(new handleCommandFromGUI());
 	        
 		} else {
 			System.out.println(getLocalName() + ": " + "You have not specified any arguments.");
@@ -95,6 +94,7 @@ public class ApplianceAgent extends Agent {
 	
 	/**
 	 * 	Register Appliance's service to the DF
+	 *  @param sd: ServiceDescription of the service of this Appliance to be registered with DF
 	 */
 	private void register(ServiceDescription sd) {
 		DFAgentDescription dfd = new DFAgentDescription();
@@ -117,33 +117,10 @@ public class ApplianceAgent extends Agent {
 	    catch (FIPAException fe) { fe.printStackTrace(); } 
 	}
 	
-	/**
-	 *  Find and return Agent from its service
-	 */
-    private DFAgentDescription[] getService(String service) {
-		DFAgentDescription dfd = new DFAgentDescription();
-		
-    	// create service template for search
-        ServiceDescription sd = new ServiceDescription();
-        sd.setType(service);
-
-        // add Service Template to DFAgentDescription 
-        dfd.addServices(sd);
-
-        // search Agent with the target services using DF
-        try {
-                DFAgentDescription[] result = DFService.search(this, dfd);
-                return result;
-        }
-        catch (Exception fe) {}
-        return null;
-	}
-    
     /**
-	 * Implement Cyclic behaviour
-	 * waiting for start inform
+	 * Implement Cyclic behaviour waiting for command sent from GUI for Agent Behaviour Manipulation
 	 */
-	private class WaitForCommand extends CyclicBehaviour{
+	private class handleCommandFromGUI extends CyclicBehaviour{
 		@Override
 		public void action() {
 			ACLMessage msg = myAgent.receive();
@@ -155,8 +132,10 @@ public class ApplianceAgent extends Agent {
 						isPausing = false;
 					} else if (msg.getContent().compareToIgnoreCase("pause") == 0) {
 						isPausing = true;
+				        printGUI(getLocalName() +  ": state is changed to pause");
 					} else if (msg.getContent().compareToIgnoreCase("resume") == 0) {
 						isPausing = false;
+						printGUI(getLocalName() +  ": state is changed to resume");
 					}
 				}
 			} else {
@@ -178,7 +157,10 @@ public class ApplianceAgent extends Agent {
         TickerBehaviour communicateToHome = new TickerBehaviour(this, 1000) {
     
             protected void onTick() {
-            	if (requestIsMet && !isPausing) {
+            	 // onTick should only be triggered if there is no request is in process and state of Appliance agent is not pausing
+            	if (communicateIsFinished && !isPausing) {
+		        	// change status for the new request
+            		communicateIsFinished = false;
 		        	
 		        	String predictionUsage;
 					double predictedValue = getUsagePrediction(USAGE_DURATION);
@@ -187,7 +169,7 @@ public class ApplianceAgent extends Agent {
 					DecimalFormat df = new DecimalFormat("#.##");
 					predictionUsage = df.format(predictedValue);
 					
-			        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
+			        System.out.println(getLocalName() +" : Prediction value for the next period is: " + predictionUsage);
 			        
 		        	// create message to send to HomeAgent
 		            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
@@ -201,7 +183,6 @@ public class ApplianceAgent extends Agent {
 		            
 		    		// set message content
 		        	msg.setContent(predictionUsage);
-		        	requestIsMet = false;
 		        	
 			        // add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
 		        	addBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
@@ -220,7 +201,7 @@ public class ApplianceAgent extends Agent {
 		};
 		
 		/*
-		//TODO : @DAVE This code below is for testing (run only 1)
+		//TODO : @DAVE This code below is for testing (run only 1) - delete later
 		// Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
 		DelayBehaviour communicateToHome = new DelayBehaviour(this, 3000) {
 			protected void handleElapsedTimeout() {
@@ -291,6 +272,49 @@ public class ApplianceAgent extends Agent {
     	}
     }
     
+    /**
+	 *  This method to search for home agent
+	 *  @param service: service's name of the Target Agent to be search for
+	 */
+	private AID searchForHomeAgent(String service) {
+		AID homeAgent = null;
+	    // search for HomeAgent via its service
+	   	DFAgentDescription[] agent = getService(service);
+	    if (agent.length > 0) {
+	    	homeAgent = agent[0].getName();
+	    }
+	    else {
+	        System.out.println(getLocalName() + ": Home Service is not found!");
+	        
+		    // print to GUI
+	        printGUI(getLocalName() + ": Home Service is not found!");
+	    }
+	    return homeAgent;
+	}
+	
+	/**
+	 *  Find and return Agent from its service
+	 *  @param service: service's name of the Target Agent to be search for
+	 */
+    private DFAgentDescription[] getService(String service) {
+		DFAgentDescription dfd = new DFAgentDescription();
+		
+    	// create service template for search
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType(service);
+
+        // add Service Template to DFAgentDescription 
+        dfd.addServices(sd);
+
+        // search Agent with the target services using DF
+        try {
+                DFAgentDescription[] result = DFService.search(this, dfd);
+                return result;
+        }
+        catch (Exception fe) {}
+        return null;
+	}
+    
 	/**
 	 *  This behaviour send usage prediction for home agent
 	 */
@@ -308,10 +332,10 @@ public class ApplianceAgent extends Agent {
 
 		// Method to handle an inform message from Home Agent after its negotiation with Retailer is success
         protected void handleInform(ACLMessage inform) {
-        	System.out.println(getLocalName() + ": receive the inform from " + inform.getSender().getLocalName());
+        	System.out.println(getLocalName() + ": received the inform from " + inform.getSender().getLocalName());
         	
 		    // print to GUI
-	        printGUI(getLocalName() + ": receive the inform from " + inform.getSender().getLocalName());
+	        printGUI(getLocalName() + ": received the inform from " + inform.getSender().getLocalName());
         }
         
         // Method to handle a refuse message from responder
@@ -338,66 +362,14 @@ public class ApplianceAgent extends Agent {
         // Method that is invoked when notifications have been received from all responders
         protected void handleAllResultNotifications(Vector notifications) {
         	System.out.println(getLocalName() + ": the request is completed!");
-        	requestIsMet = true;
         	// print to GUI
 	        printGUI(getLocalName() + ": the request is completed!");
-    	
         }
-    }
-
-	/**
-	 *  This behaviour send actual energy usage to home
-	 */
-    private class ReportingActualEnergyUsage extends OneShotBehaviour {
-    	public void action() {
-        	// this is only trigger when the stage 1 is completed
-        	sendActualUsage();
-    	}
-    }
-    
-	/**
-	 *  This method to search for home agent
-	 */
-	private AID searchForHomeAgent(String service) {
-		AID homeAgent = null;
-	    // search for HomeAgent via its service
-	   	DFAgentDescription[] agent = getService(service);
-	    if (agent.length > 0) {
-	    	homeAgent = agent[0].getName();
-	    }
-	    else {
-	        System.out.println(getLocalName() + ": Home Service is not found!");
-	        
-		    // print to GUI
-	        printGUI(getLocalName() + ": Home Service is not found!");
-	    }
-	    return homeAgent;
-	}
-	
-	/**
-	 *  Energy Consumption Stimulation and Send to Home Agent
-	 *  Agents doesn't produce the energy but read from database and send them to Home Agent
-	 */
-    protected void sendActualUsage() {
-    	String energyConsumed = Double.toString(getActualEnergyUsage(USAGE_DURATION));
-        	
-    	// send messages to home agents
-	    ACLMessage msg = new ACLMessage(ACLMessage.INFORM_REF);
-	    msg.setContent(energyConsumed);
-	    msg.addReceiver(getHomeAgent());
-	    
-	    // send Message
-	    System.out.println(getLocalName() + ": Sending Actual Usage to Home: " + msg.getContent());
-
-	    // print to GUI
-        printGUI(getLocalName() + ": Sending Actual Usage to Home: <b>" + msg.getContent() + "</b>");
-	    
-        // send message with actual energy usage
-	    send(msg);
     }
 	
 	/**
 	 *  Energy Consumption Prediction - Naive Prediction with the data from CSV file
+	 *  @param timeDuration: the period of time to make the prediction of energy usage for this Appliance
 	 */
 	protected double getUsagePrediction(int duration) {
 		// get the data for the Appliance Agent from CSV file based on the index column
@@ -437,8 +409,85 @@ public class ApplianceAgent extends Agent {
 		return predictUsage;
     }
 	
+	
 	/**
+	 *  ResultReceiver Behavior - Receiving Home Agent Message Inform Negotiation result of it and Retailer Agent
+	 */
+	private class ResultReceiver extends Behaviour {
+
+		private MessageTemplate msgTemplate;
+		private boolean isReceived = false;
+		
+		public ResultReceiver(Agent a, MessageTemplate msgTemplate) {
+			super (a);
+			this.msgTemplate = msgTemplate;
+		}
+		
+		@Override
+		public void action() {
+			//System.out.println(getLocalName() + ": Waiting for Result Message....");
+
+			// retrieve message from message queue if there is
+	        ACLMessage msg= receive(this.msgTemplate);
+	        if (msg!=null) {
+		        // print out message content to console
+		        System.out.println(getLocalName() + ": received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
+
+		        // print out message content to GUI
+		        printGUI(getLocalName() + ": received result <b>" + msg.getContent() + "</b> from " + msg.getSender().getLocalName());
+		        isReceived = true;
+		        
+	        	// add behaviour to report actual usage
+	        	addBehaviour(new ReportingActualEnergyUsage());
+			}
+	    
+	        // block the behaviour from terminating and keep listening to the message
+	        block();
+	    }
+		
+		public boolean done() {
+			return isReceived;
+		}
+	}
+	
+	/**
+	 *  This behaviour send actual energy usage to home
+	 */
+    private class ReportingActualEnergyUsage extends OneShotBehaviour {
+    	public void action() {
+        	// this is only trigger when the stage 1 is completed
+        	sendActualUsage();
+    	}
+    }
+	
+	/**
+	 *  Energy Consumption Stimulation and Send to Home Agent
+	 *  Agents doesn't produce the energy but read from database and send them to Home Agent
+	 */
+    protected void sendActualUsage() {
+    	String energyConsumed = Double.toString(getActualEnergyUsage(USAGE_DURATION));
+        	
+    	// send messages to home agents
+	    ACLMessage msg = new ACLMessage(ACLMessage.INFORM_REF);
+	    msg.setContent(energyConsumed);
+	    msg.addReceiver(getHomeAgent());
+	    
+	    // send Message
+	    System.out.println(getLocalName() + ": Sending Actual Usage to Home: " + msg.getContent());
+
+	    // print to GUI
+        printGUI(getLocalName() + ": Sending Actual Usage to Home: <b>" + msg.getContent() + "</b>");
+	    
+        // send message with actual energy usage
+	    send(msg);
+	    
+        // set communication status is completed
+        communicateIsFinished = true;
+    }
+    
+    /**
 	 *  Energy Consumption Stimulation - Agent reads from data from CSV file and return
+	 *  @param timeDuration: the period of time with related energy consumption of this Appliance
 	 */
 	private Double getActualEnergyUsage(int timeDuration) {
 		int dataIndex= applicantDict.get(this.applianceName.toUpperCase());
@@ -480,46 +529,6 @@ public class ApplianceAgent extends Agent {
 	}
 	
 	/**
-	 *  ResultReceiver Behavior - Receiving Home Agent Message Inform Negotiation result of it and Retailer Agent
-	 */
-	private class ResultReceiver extends CyclicBehaviour {
-
-		private MessageTemplate msgTemplate;
-		private boolean isReceived = false;
-		
-		public ResultReceiver(Agent a, MessageTemplate msgTemplate) {
-			super (a);
-			this.msgTemplate = msgTemplate;
-		}
-		
-		@Override
-		public void action() {
-			//System.out.println(getLocalName() + ": Waiting for Result Message....");
-
-			// retrieve message from message queue if there is
-	        ACLMessage msg= receive(this.msgTemplate);
-	        if (msg!=null) {
-		        // print out message content to console
-		        System.out.println(getLocalName() + ": received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
-
-		        // print out message content to GUI
-		        printGUI(getLocalName() + ": received result <b>" + msg.getContent() + "</b> from " + msg.getSender().getLocalName());
-		        isReceived = true;
-		        
-	        	// add behaviour to report actual usage
-	        	addBehaviour(new ReportingActualEnergyUsage());
-			}
-	    
-	        // block the behaviour from terminating and keep listening to the message
-	        block();
-	    }
-		/*
-		public boolean done() {
-			return isReceived;
-		}*/
-	}
-	
-	/**
 	 * Initialize the map which Appliance's Name and its address in CSV file
 	 */
 	private void intializeAppliantDictionary() {
@@ -551,7 +560,7 @@ public class ApplianceAgent extends Agent {
 	
 	/**
 	 * Print to GUI agent
-	 * @param text
+	 * @param text: content to be printed out the GUI
 	 */
 	private void printGUI(String text) {
 		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
