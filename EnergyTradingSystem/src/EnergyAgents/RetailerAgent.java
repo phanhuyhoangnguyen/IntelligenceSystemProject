@@ -64,7 +64,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 	
 	// negotiation mechanism: by time, on demand
 	public static enum Mechanism {
-		GENERAL ,BY_TIME ,ON_DEMAND, FIXED_PRICE
+		RANDOM ,ON_DEMAND, FIXED_PRICE
 	}
 	private Mechanism negoMechanism;
 	
@@ -98,14 +98,14 @@ public class RetailerAgent extends Agent implements GUIListener{
 		demandUsage = 0;
 		fixedPrice = 30.0; // always
 		usageCharge = getRandomDouble(20.0, 30.0);	// 20 to 30 cents per kwh
-		overCharge = usageCharge + (usageCharge * 0.05);	// plus 5%
+		overCharge = usageCharge + (usageCharge * 0.10);	// plus 10%
 		
 		
 		negoPrice = calcNegoPrice(0);	// calculate negoPrice based on demand
 		negoLimitPrice = truncatedDouble( negoPrice - (negoPrice * 0.15) );	// eg. no more than 15%
 		negoIterateReduceBy = 0.2; // reduce 0.2 percent in each counter
 		
-		negoMechanism = Mechanism.GENERAL;
+		negoMechanism = Mechanism.RANDOM;
 		negoCounterOffer = 3;
 		negoCounter = 0;
 		negoTimeWait = 15;	// 15 seconds

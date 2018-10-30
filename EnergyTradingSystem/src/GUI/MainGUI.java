@@ -30,6 +30,7 @@ import javax.swing.border.EmptyBorder;
 
 
 import EnergyAgents.JadeController;
+import EnergyAgents.PrintAgent;
 import jade.core.AID;
 import jade.core.Profile;
 import jade.core.behaviours.OneShotBehaviour;
@@ -43,10 +44,15 @@ import jade.wrapper.gateway.JadeGateway;
 public class MainGUI extends JFrame {
 	private JPanel contentPane;
 	
+	private AgentController printAgent;
 	private AgentController homeAgent;
 	private List<AgentController> retailerAgents;
 	private List<AgentController> applianceAgents;
 	
+	
+	private boolean isNegoStarted = false;
+	private JButton mStartButton;
+	private JButton mPauseButton;
 	
 	/* --- Getter / Setter --- */
 	public AgentController getHomeAgent() {
@@ -56,6 +62,12 @@ public class MainGUI extends JFrame {
 		this.homeAgent = homeAgent;
 	}
 
+	public AgentController getPrintAgent() {
+		return printAgent;
+	}
+	public void setPrintAgent(AgentController printAgent) {
+		this.printAgent = printAgent;
+	}
 
 	public List<AgentController> getRetailerAgents() {
 		return retailerAgents;
@@ -80,6 +92,7 @@ public class MainGUI extends JFrame {
 		setTitle("Energy System");
 		
 		// set default
+		printAgent = null;
 		homeAgent = null;
 		retailerAgents = null;
 		applianceAgents = null;
@@ -124,11 +137,18 @@ public class MainGUI extends JFrame {
 		mRetailerText.setFont(new Font("Tahoma", Font.BOLD, 19));
 		mRetailerText.addMouseListener(new OnMouseListener());
 		
-		JButton mStartButton = new JButton(" Start ");
+		mStartButton = new JButton(" Start ");
 		mStartButton.setPreferredSize(new Dimension(100, 50));
 		mStartButton.addActionListener(new StartClick());
+		
+		mPauseButton = new JButton(" Pause ");
+		mPauseButton.setPreferredSize(new Dimension(100, 50));
+		mPauseButton.addActionListener(new PauseClick());
+		mPauseButton.setEnabled(false);
+		
 		JPanel bottomPane = new JPanel();
 		bottomPane.add(mStartButton);
+		bottomPane.add(mPauseButton);
 		
 		
 		GroupLayout gl_contentPane = new GroupLayout(contentPane);
@@ -242,6 +262,17 @@ public class MainGUI extends JFrame {
 	private class StartClick implements ActionListener {
 		@Override
 		public void actionPerformed(ActionEvent e) {
+			
+			// check is already started
+			if ( isNegoStarted ) {
+				return;
+			} else {
+				isNegoStarted = true;
+			}
+			// enable disable button
+			mStartButton.setEnabled(!isNegoStarted);
+			mPauseButton.setEnabled(isNegoStarted);
+			
 			System.out.println("Main GUI: start negotiation.");
 			
 			// Invoke appliance agents
@@ -280,7 +311,75 @@ public class MainGUI extends JFrame {
 			}
 			JadeGateway.shutdown();
 			
+			
+			
 		} // action perform
 		  
 	} // end click
+
+
+	/*
+	 * Handle button Pause listener
+	 */
+	private class PauseClick implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			
+			// check is already paused
+			if ( !isNegoStarted ) {
+				return;
+			} else {
+				isNegoStarted = false;
+			}
+			// enable disable button
+			mStartButton.setEnabled(!isNegoStarted);
+			mPauseButton.setEnabled(isNegoStarted);
+						
+			System.out.println("Main GUI: pause negotiation.");
+			
+			// Invoke appliance agents
+			Properties pp = new Properties();
+			pp.setProperty(Profile.MAIN_HOST, JadeController.MAINHOST);
+			pp.setProperty(Profile.MAIN_PORT, JadeController.MAINPORT);
+			JadeGateway.init(null, pp);
+			
+			OneShotBehaviour sendMessage = new OneShotBehaviour(){
+				@Override
+				public void action() {
+					ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+					msg.setContent("pause");
+					// tell home
+					AID home = new AID("Home", AID.ISLOCALNAME);
+					msg.addReceiver(home);
+					
+					// tell appliance
+					for ( AgentController agent : applianceAgents) {
+						try {
+							AID aid = new AID(agent.getName(), AID.ISGUID);
+							msg.addReceiver(aid);
+						} catch (StaleProxyException e1) {
+							e1.printStackTrace();
+						}
+					}
+					
+					myAgent.send(msg);
+				}
+			};
+			
+			try {
+				JadeGateway.execute(sendMessage);
+			} catch (ControllerException | InterruptedException e1) {
+				e1.printStackTrace();
+			}
+			JadeGateway.shutdown();
+			
+			
+		} // action perform
+		  
+	} // end click
+
+
+
+
+
 }
