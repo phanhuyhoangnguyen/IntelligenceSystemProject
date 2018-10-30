@@ -62,7 +62,7 @@ public class ApplianceAgent extends Agent {
 	// For Home Agent
 	private AID homeAgent;
 	private static final String HomeAgentService = "Home";
-	private boolean isFinishedNegotiated = true;
+	private boolean requestIsMet = true;
 	
 	// For testing
 	private int testCounter = 0;
@@ -150,7 +150,6 @@ public class ApplianceAgent extends Agent {
 			if (msg != null) {
 				if (msg.getPerformative() == ACLMessage.INFORM && msg.getContent().compareToIgnoreCase("start") == 0 ) {
 					printGUIClean();
-					//System.out.println("<font color='gray'> Start negotiation</font>");
 					startNegotiation();
 				}
 			} else {
@@ -172,8 +171,7 @@ public class ApplianceAgent extends Agent {
         TickerBehaviour communicateToHome = new TickerBehaviour(this, 1000) {
     
             protected void onTick() {
-            	if (isFinishedNegotiated) {
-		        	SequentialBehaviour communicationSequence = new SequentialBehaviour();
+            	if (requestIsMet) {
 		        	
 		        	String predictionUsage;
 					double predictedValue = getUsagePrediction(USAGE_DURATION);
@@ -196,23 +194,18 @@ public class ApplianceAgent extends Agent {
 		            
 		    		// set message content
 		        	msg.setContent(predictionUsage);
-		        	isFinishedNegotiated = false;
+		        	requestIsMet = false;
 		        	
 			        // add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
-		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
+		        	addBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
 		        	
-		        	// add behaviour to report actual usage
-		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
-		        	
-			        addBehaviour(communicationSequence);
-			        
-			    	// only listen to Home Agent with Inform message
+		        	// only listen to Home Agent with Inform message
 			    	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
 			    			MessageTemplate.MatchSender(getHomeAgent()));
 			        
-					// add behaviour that receives messages
+					// add behaviour that receives messages contained result of negotation
 			    	addBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
-			        
+			    	
 			        // after the 1st tick, the update duration is set to 30s
 			        this.reset(UPATE_DURATION);
             	}
@@ -301,16 +294,25 @@ public class ApplianceAgent extends Agent {
 		// Method to handle an agree message from responder
 		protected void handleAgree(ACLMessage agree) {
 			System.out.println(getLocalName() + ": " + agree.getSender().getLocalName() + " has agreed to the request");
+			
+		    // print to GUI
+	        printGUI(getLocalName() +  ": " + agree.getSender().getLocalName() + " has agreed to the request");
 		}
 
 		// Method to handle an inform message from Home Agent after its negotiation with Retailer is success
         protected void handleInform(ACLMessage inform) {
         	System.out.println(getLocalName() + ": receive the inform from " + inform.getSender().getLocalName());
+        	
+		    // print to GUI
+	        printGUI(getLocalName() + ": receive the inform from " + inform.getSender().getLocalName());
         }
         
         // Method to handle a refuse message from responder
         protected void handleRefuse(ACLMessage refuse) {
         	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request.");
+        	
+		    // print to GUI
+	        printGUI(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request.");
         }
 
         // Method to handle a failure message (failure in delivering the message)
@@ -320,13 +322,19 @@ public class ApplianceAgent extends Agent {
         		System.out.println(getLocalName() + ": " + getHomeAgent() +" does not exist");
         	} else {
                 System.out.println(getLocalName() + ": " + failure.getSender().getLocalName() + " failed to perform the requested action");
+                
+    		    // print to GUI
+    	        printGUI(getLocalName() + ": " + failure.getSender().getLocalName() + " failed to perform the requested action");
         	}
         }
             
         // Method that is invoked when notifications have been received from all responders
         protected void handleAllResultNotifications(Vector notifications) {
         	System.out.println(getLocalName() + ": the request is completed!");
-        	isFinishedNegotiated = true;
+        	requestIsMet = true;
+        	// print to GUI
+	        printGUI(getLocalName() + ": the request is completed!");
+    	
         }
     }
 
@@ -351,7 +359,10 @@ public class ApplianceAgent extends Agent {
 	    	homeAgent = agent[0].getName();
 	    }
 	    else {
-	        System.out.println("Home Service is not found!");
+	        System.out.println(getLocalName() + ": Home Service is not found!");
+	        
+		    // print to GUI
+	        printGUI(getLocalName() + ": Home Service is not found!");
 	    }
 	    return homeAgent;
 	}
@@ -369,14 +380,12 @@ public class ApplianceAgent extends Agent {
 	    msg.addReceiver(getHomeAgent());
 	    
 	    // send Message
-	    System.out.println("ACTUAL: "+ getLocalName() + ": Sending message " + msg.getContent() + " to ");
+	    System.out.println(getLocalName() + ": Sending Actual Usage to Home: " + msg.getContent());
+
+	    // print to GUI
+        printGUI(getLocalName() + ": Sending Actual Usage to Home: <b>" + msg.getContent() + "</b>");
 	    
-	    Iterator receivers = msg.getAllIntendedReceiver();
-	    while(receivers.hasNext()) {
-	            System.out.println(((AID)receivers.next()).getLocalName());
-	    }
-	    
-	    // send message with actual energy usage
+        // send message with actual energy usage
 	    send(msg);
     }
 	
@@ -483,9 +492,15 @@ public class ApplianceAgent extends Agent {
 			// retrieve message from message queue if there is
 	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
-		        // print out message content
-		        System.out.println(getLocalName()+ ": received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
+		        // print out message content to console
+		        System.out.println(getLocalName() + ": received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
+
+		        // print out message content to GUI
+		        printGUI(getLocalName() + ": received result <b>" + msg.getContent() + "</b> from " + msg.getSender().getLocalName());
 		        isReceived = true;
+		        
+	        	// add behaviour to report actual usage
+	        	addBehaviour(new ReportingActualEnergyUsage());
 			}
 	    
 	        // block the behaviour from terminating and keep listening to the message
@@ -534,7 +549,7 @@ public class ApplianceAgent extends Agent {
 	private void printGUI(String text) {
 		ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
 		msg.addReceiver(new AID(PrintAgent.AGENT_NAME, AID.ISLOCALNAME ));
-		msg.setContent("<font color='red'>" + text + "</font>");
+		msg.setContent("<font color='green'>" + text + "</font>");
 		send(msg);
 	}
 	
