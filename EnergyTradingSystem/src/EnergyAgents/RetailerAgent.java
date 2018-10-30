@@ -42,7 +42,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 	// price always not change
 	private double fixedPrice;
 	
-	// charge is over the meter of the contract
+	// charge is over the demand in %
 	private double overCharge;
 	
 	// demand usage
@@ -98,11 +98,11 @@ public class RetailerAgent extends Agent implements GUIListener{
 		demandUsage = 0;
 		fixedPrice = 30.0; // always
 		usageCharge = getRandomDouble(20.0, 30.0);	// 20 to 30 cents per kwh
-		overCharge = usageCharge + (usageCharge * 0.10);	// plus 10%
+		overCharge = 10;	// plus 10%
 		
 		
 		negoPrice = calcNegoPrice(0);	// calculate negoPrice based on demand
-		negoLimitPrice = truncatedDouble( negoPrice - (negoPrice * 0.15) );	// eg. no more than 15%
+		negoLimitPrice = truncatedDouble( usageCharge - (usageCharge * 0.15) );	// eg. no more than 15%
 		negoIterateReduceBy = 0.2; // reduce 0.2 percent in each counter
 		
 		negoMechanism = Mechanism.RANDOM;
@@ -309,6 +309,26 @@ public class RetailerAgent extends Agent implements GUIListener{
 		agentName = getAID().getLocalName();
 		System.out.println( agentName +" Started.");
 		
+		// get arguments
+		Object[] args = getArguments();
+		if (args != null && args.length > 0) {
+			
+			// if the args[0] is mechanism
+			for ( Mechanism m : Mechanism.values() ) {
+				if ( m.toString().equalsIgnoreCase(args[0].toString()) ) {
+					negoMechanism = m;
+				}
+			}
+			
+			// if the args[1] is price
+			try {
+				double price = Double.parseDouble(args[1].toString());
+				usageCharge = price;
+				negoLimitPrice = truncatedDouble( usageCharge - (usageCharge * 0.15) );
+			}catch(Exception ex) {}
+			
+		}// end args loop
+		
 		// Register the service
 		DFAgentDescription dfd = new DFAgentDescription();
 		dfd.setName(getAID());
@@ -350,112 +370,9 @@ public class RetailerAgent extends Agent implements GUIListener{
 				fe.printStackTrace();
 		}
 		
-		System.out.println( agentName +" stopped.");
+		System.out.println( agentName +" was deleted.");
 	}
-	
-	
 		
-	
-	/**
-	 * ContractNet Behaviour
-	 */
-	private class ServicesReponder extends ContractNetResponder {
-
-		public ServicesReponder(Agent a, MessageTemplate mt) {
-			super(a, mt);
-			
-		}
-
-		/*
-		 * First step
-		 * send usage charge to home agent 
-		 */
-		@Override
-		protected ACLMessage prepareResponse(ACLMessage cfp) {
-			System.out.println(agentName + " start proposing " + String.valueOf(usageCharge) + " to " + cfp.getSender().getLocalName());
-			printGUI(agentName + " start proposing <b>" + String.valueOf(usageCharge) + "</b> to " + cfp.getSender().getLocalName());
-			// create propose
-			ACLMessage propose = cfp.createReply();
-			propose.setPerformative(ACLMessage.PROPOSE);
-			propose.setContent(String.valueOf(usageCharge));
-			
-			resetNegotiation();
-			
-			return propose;
-		}
-		
-		
-		
-
-		
-		/**
-		 * Handle the offer from home agent
-		 */
-		@Override
-		protected ACLMessage handleCfp(ACLMessage cfp) throws RefuseException, FailureException, NotUnderstoodException {
-			
-			System.out.println(agentName + " received " + cfp.getContent() + " from " + cfp.getSender().getLocalName() + " , acl : " + cfp.getPerformative());
-			
-			ACLMessage reply = cfp.createReply();
-			
-			switch ( cfp.getPerformative() ) {
-				
-				case ACLMessage.PROPOSE:
-					System.out.println("Agent "+getLocalName()+": send proposal ");
-					reply.setPerformative(ACLMessage.PROPOSE);
-					reply.setContent(String.valueOf(26));
-					return reply;
-					
-				// counter offer
-				case ACLMessage.QUERY_REF:
-					System.out.println("Agent "+getLocalName()+": query ref ");
-					reply.setPerformative(ACLMessage.PROPOSE);
-					reply.setContent(String.valueOf(27));
-					return reply;
-					
-				default:
-					return super.handleCfp(cfp);
-			}
-			
-			
-		}
-		
-		
-		
-		/**
-		 * when home agent accept
-		 */
-		@Override
-		protected ACLMessage handleAcceptProposal(ACLMessage cfp, ACLMessage propose, ACLMessage accept) {
-			System.out.println(accept.getSender().getLocalName() +" accepted the proposal");
-			printGUI(accept.getSender().getLocalName() +" accepted the proposal");
-			// say thank
-			ACLMessage inform = accept.createReply();
-			inform.setProtocol(accept.getProtocol());
-			inform.setContent("Thank you for your support from " + agentName);
-			inform.setPerformative(ACLMessage.INFORM);
-			return inform;
-		}
-
-		
-		/**
-		 * when home agent reject
-		 */
-		protected ACLMessage handleRejectProposal(ACLMessage reject) {
-			System.out.println(reject.getSender().getLocalName() +" reject the proposal");
-			printGUI(reject.getSender().getLocalName() +" rejected the proposal");
-			// say sorry
-			ACLMessage inform = reject.createReply();
-			inform.setProtocol(reject.getProtocol());
-			inform.setContent("Sorry, to hear that from " + agentName);
-			inform.setPerformative(ACLMessage.INFORM);
-			return inform;
-		}
-
-
-	}
-	// end contractNetBehaviour
-	
 	/* --- Jade Agent behaviour classes --- */
 	/**
 	 * Negotiation
@@ -607,9 +524,10 @@ public class RetailerAgent extends Agent implements GUIListener{
 							double  actualPrice = Double.parseDouble(content);
 							// over charge
 							if ( actualPrice > demandUsage ) {
-								System.out.println("Send overcharge price: $"+ overCharge);// @Dave
+								double calOverCharge = truncatedDouble( negoPrice * (1 + (overCharge/100)) );
+								System.out.println("Send overcharge price: $"+ calOverCharge);
 								reply.setPerformative(ACLMessage.QUERY_REF);
-								reply.setContent(String.valueOf(overCharge));
+								reply.setContent(String.valueOf(calOverCharge));
 							}else {
 								System.out.println("No overchage");//@Dave
 								reply.setPerformative(ACLMessage.QUERY_REF);
