@@ -43,7 +43,7 @@ public class ApplianceAgent extends Agent {
 	
 	// For Message Communication to HomeAgent
 	// TODO: change this later
-	private static final int UPATE_DURATION = 30000;				// 30s -> specify the frequency of message sent to Home Agent. 
+	private static final int UPATE_DURATION = 300000000;				// 30s -> specify the frequency of message sent to Home Agent. 
 																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
 	// For energyUsage Stimulation
 	private int actualLivedSeconds;									// number of seconds agents have lived since created

@@ -447,7 +447,7 @@ public class HomeAgent extends Agent implements GUIListener
                     System.out.println("Best price ("+bestPrice+") <= ideal budget limit ("+idealBestPrice+")");
 					return;
 				}*/
-				if (message != null ) {
+				if (message != null && !hasNegotiationFinished) {
                     System.out.println("");
                     System.out.println("3RD");
 					//Get the counter offer from retailer
@@ -573,7 +573,7 @@ public class HomeAgent extends Agent implements GUIListener
         //Print the summary   
         retailerSeQue.addSubBehaviour(new OneShotBehaviour(){
             public void action(){
-                if(hasNegotiationFinished){
+                if(hasNegotiationFinished && bestOffer!=null){
                     System.out.println("Negotiation finished");
                     System.out.println("Total Predicted Comsumption: "+ totalPredictedEnergyConsumption);
                     System.out.println("Best Price: $"+ bestPrice);
