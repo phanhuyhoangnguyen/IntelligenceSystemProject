@@ -64,8 +64,8 @@ public class ApplianceAgent extends Agent {
 	private static final String HomeAgentService = "Home";
 	private boolean requestIsMet = true;
 	
-	// For testing
-	private int testCounter = 0;
+	// For GUI Command
+	private boolean isPausing;										// pause the operations executed in the ticker behaviour
 	
 	public ApplianceAgent () {
 		// Appliance Agent has lived for at least 30 mins (1 row in CSV)
@@ -86,7 +86,7 @@ public class ApplianceAgent extends Agent {
 	        sd.setName(getApplianceName());
 	        register(sd);
 	        
-	        addBehaviour(new WaitForStart());
+	        addBehaviour(new WaitForCommand());
 	        
 		} else {
 			System.out.println(getLocalName() + ": " + "You have not specified any arguments.");
@@ -143,14 +143,21 @@ public class ApplianceAgent extends Agent {
 	 * Implement Cyclic behaviour
 	 * waiting for start inform
 	 */
-	private class WaitForStart extends CyclicBehaviour{
+	private class WaitForCommand extends CyclicBehaviour{
 		@Override
 		public void action() {
 			ACLMessage msg = myAgent.receive();
 			if (msg != null) {
-				if (msg.getPerformative() == ACLMessage.INFORM && msg.getContent().compareToIgnoreCase("start") == 0 ) {
-					printGUIClean();
-					startNegotiation();
+				if (msg.getPerformative() == ACLMessage.INFORM) {
+					if (msg.getContent().compareToIgnoreCase("start") == 0) {
+						printGUIClean();
+						startNegotiation();
+						isPausing = false;
+					} else if (msg.getContent().compareToIgnoreCase("pause") == 0) {
+						isPausing = true;
+					} else if (msg.getContent().compareToIgnoreCase("resume") == 0) {
+						isPausing = false;
+					}
 				}
 			} else {
 				block();
@@ -171,7 +178,7 @@ public class ApplianceAgent extends Agent {
         TickerBehaviour communicateToHome = new TickerBehaviour(this, 1000) {
     
             protected void onTick() {
-            	if (requestIsMet) {
+            	if (requestIsMet && !isPausing) {
 		        	
 		        	String predictionUsage;
 					double predictedValue = getUsagePrediction(USAGE_DURATION);
