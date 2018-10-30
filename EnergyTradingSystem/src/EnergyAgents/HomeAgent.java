@@ -248,7 +248,7 @@ public class HomeAgent extends Agent implements GUIListener
             System.out.println("Result:"+bestPrice);
             
             printGUI("");
-            printGUI("Send result, which is $"+bestPrice+" to appliance agents");
+            printGUI("Send result, which is <b>$"+bestPrice+"</b> to appliance agents");
 
             //Send the result after finishing negotiation
             AID[] appliances = getAgentList("Appliance");
@@ -359,7 +359,7 @@ public class HomeAgent extends Agent implements GUIListener
                             System.out.println( offer  + " < " + bestPrice);
 
                     		//Compare with budgetLimit
-                            if(offer <= idealBestPrice){
+                            if(offer <= bestPrice){
                                 bestPrice = offer;// set new better limit
                                 bestOffer = message;
                             }
@@ -584,9 +584,9 @@ public class HomeAgent extends Agent implements GUIListener
                     printGUI("");
                     printGUI("<font color='black'>---- SUMMARY ----</font>");
                     printGUI("Total Predicted Comsumption: "+ totalPredictedEnergyConsumption);
-                    printGUI("Best Price: $"+ bestPrice);
-                    printGUI("Amount of paid money: $" + (totalPredictedEnergyConsumption*bestPrice));
-                    printGUI("Remaining Budget: $"+ budgetLimit);
+                    printGUI("Best Price: <b>$"+ bestPrice+"</b>");
+                    printGUI("Amount of paid money: <b>$" + (totalPredictedEnergyConsumption*bestPrice)+ "</b>");
+                    printGUI("Remaining Budget: <b>$"+ budgetLimit+"</b>");
                 }else{
                     System.out.println("Negotiation has not finished yet!!");
                 }
@@ -600,7 +600,7 @@ public class HomeAgent extends Agent implements GUIListener
 
         MessageTemplate actualMessageTemplate =MessageTemplate.MatchPerformative(ACLMessage.INFORM_REF);
         //Receive actual consumption
-        retailerSeQue.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
+        //retailerSeQue.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
     }
 
     
