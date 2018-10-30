@@ -173,7 +173,7 @@ public class HomeAgent extends Agent implements GUIListener
         protected ACLMessage handleRequest(ACLMessage request) throws NotUnderstoodException, RefuseException {
             System.out.println("");
             System.out.println(getLocalName() + ": REQUEST received from "
-                    + request.getSender().getLocalName() + ".\nThe demand is " + request.getContent()+ "");
+                    + request.getSender().getLocalName() + ".\nThe received demand is " + request.getContent()+ "");
             
             // Tola: reset value if talk with appliance finished
             if ( isApplianceFinished ) {
@@ -189,10 +189,8 @@ public class HomeAgent extends Agent implements GUIListener
             
             totalPredictedEnergyConsumption += consume;
 
-            System.out.println("Total Demand: " + totalPredictedEnergyConsumption);
+            System.out.println("Total Demand of all appliances is: " + totalPredictedEnergyConsumption);
             ++applianceCount;
-            System.out.println("Appliance Number: " + applianceCount);
-            System.out.println("Appliance length: " + totalAppliances);
 
             printGUI(getLocalName() +" added <b>" + request.getSender().getLocalName() + "</b>  consumes <b>" + consume + "</b>, Total <b>" + totalPredictedEnergyConsumption + "</b>");
             
@@ -294,8 +292,6 @@ public class HomeAgent extends Agent implements GUIListener
 
         //Get all retailer agents
         AID[] retailers = getAgentList("Retailer");
-        
-        System.out.println("Retailer agents found:" + retailers.length);
 
         /** 1ST --- Inform retailers agent to send their offer */
         for( AID retailer : retailers){
