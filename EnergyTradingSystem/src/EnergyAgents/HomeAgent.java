@@ -38,6 +38,7 @@ public class HomeAgent extends Agent implements GUIListener
 
     //Total energy consumption get from appliance agent
     private float totalPredictedEnergyConsumption;
+    private float totalActualedEnergyConsumption;
     private int applianceCount;
     private int totalAppliances;
 
@@ -67,8 +68,9 @@ public class HomeAgent extends Agent implements GUIListener
     private void init()
     {
         this.totalPredictedEnergyConsumption = 0;
+        this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
-        this.budgetLimit = getRandomDouble(3000, 5000);
+        this.budgetLimit = getRandomDouble(3500, 5000);
         //this.idealBestPrice = truncatedDouble( this.budgetLimit * 0.7); // 70% of the budget
 
         //Agent name and type
@@ -85,7 +87,8 @@ public class HomeAgent extends Agent implements GUIListener
     }
     
     private void resetDefault() {
-    	this.totalPredictedEnergyConsumption = 0;
+        this.totalPredictedEnergyConsumption = 0;
+        this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
         //this.idealBestPrice = this.budgetLimit * 0.7; // 70% of the budget
         
@@ -152,12 +155,6 @@ public class HomeAgent extends Agent implements GUIListener
         MessageTemplate applianceTemplate = MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST), MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
         
         homeSequenceBehaviour.addSubBehaviour(new CommunicateWithApplianceBehaviour(this, applianceTemplate));
-        
-        // Tola: wait until all demands have been calculated
-        //Communicate with the retailer agents
-        //homeSequenceBehaviour.addSubBehaviour(retailerSequenceBehaviour);
-        //CommunicateWithRetailer(retailerSequenceBehaviour);
-        
         
 
         addBehaviour(homeSequenceBehaviour);
@@ -243,11 +240,16 @@ public class HomeAgent extends Agent implements GUIListener
         }
     }
     
+
+    //Send result to appliance agents
     private class SendResultToApplianceBehaviour extends OneShotBehaviour{
         public void action(){
             System.out.println("\n**** Send Result ****");
             System.out.println("Result:"+bestPrice);
             
+            printGUI("");
+            printGUI("Send result, which is $"+bestPrice+" to appliance agents");
+
             //Send the result after finishing negotiation
             AID[] appliances = getAgentList("Appliance");
             ACLMessage resultMessage = new ACLMessage(ACLMessage.CONFIRM);
@@ -255,9 +257,54 @@ public class HomeAgent extends Agent implements GUIListener
                 resultMessage.addReceiver(appliance);
             }
             resultMessage.setContent(""+bestPrice);
+
+            Iterator receivers = resultMessage.getAllIntendedReceiver();
+            while(receivers.hasNext()) {
+                System.out.println(((AID)receivers.next()).getLocalName());
+            }
             send(resultMessage);
         }
     }
+
+    //Get actual total consumption from appliance agents
+    private class GetActualConsumptionBehaviour extends Behaviour {
+
+        private MessageTemplate msgTemplate;
+        private int count;
+		
+		public GetActualConsumptionBehaviour(Agent a, MessageTemplate msgTemplate) {
+			super (a);
+            this.msgTemplate = msgTemplate;
+            count = 0 ;
+		}
+		
+		@Override
+		public void action() {
+			System.out.println("GET ACTUAL CONSUMPTION: "+ getLocalName() + ": Waiting for acutal consumption....");
+
+			// Retrieve message from message queue if there is
+	        ACLMessage msg= receive(this.msgTemplate);
+	        if (msg!=null) {
+		        // Print out message content
+                System.out.println("GET ACTUAL CONSUMPTION: "+getLocalName()+ ": Received consumption " + msg.getContent() + " from " + msg.getSender().getLocalName());
+                totalActualedEnergyConsumption += Double.parseDouble(msg.getContent());
+                System.out.println("TOTAL ACTUAL CONSUMPTION: "+ totalActualedEnergyConsumption);
+                ++count;
+            }
+	        // Block the behaviour from terminating and keep listening to the message
+            block();
+        }
+        
+        @Override
+        public boolean done(){
+            return count == totalAppliances;
+        }
+
+        public int onEnd() {
+            System.out.println(this.getBehaviourName() + ": I have finished executing");
+            return super.onEnd();
+        }
+	}
     
     /***
      * Communicate with Retailer Agent
@@ -271,27 +318,24 @@ public class HomeAgent extends Agent implements GUIListener
                 System.out.println("**** NEGOTIATION **** ");
                 System.out.println("Home Budget: "  + budgetLimit);
                 System.out.println("Total Consumption: "  + totalPredictedEnergyConsumption);
-                
+                idealBestPrice = budgetLimit/totalPredictedEnergyConsumption;
+                bestPrice = idealBestPrice;
+                System.out.println("Ideal Best Price: $"  + idealBestPrice);
                 System.out.println("");
                 //Print to GUI
                 printGUI("<font color='black'>---- NEGOTIATION ---- </font> ");
                 printGUI("Home Budget: <b>$"  + budgetLimit+"</b>");
                 printGUI("Total Consumption: <b>"  + totalPredictedEnergyConsumption+"</b>");
+                printGUI("Ideal Best Price: $"  + idealBestPrice);
                 printGUI("");
             }
         });
 
         //Initialize message and template for communicating with Retailer Agent
-        ACLMessage messageRetailer = newMessage(ACLMessage.CFP);	// Tola: change to CFP
-        //MessageTemplate template = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId(messageRetailer.getConversationId() ));
-        MessageTemplate template = MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
+        ACLMessage messageRetailer = newMessage(ACLMessage.CFP);	
         
-        // Tola: Parallel behaviour is not suitable for this, it's a step by step
-        //Add parallel behaviour to handle conversations
-        //WHEN_ALL: terminiate the behaviour when all its children are done
-        //ParallelBehaviour par = new ParallelBehaviour(ParallelBehaviour.WHEN_ALL);
-        //retailerSeQue.addSubBehaviour(par);
-
+        MessageTemplate template = MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
+    
         //Get all retailer agents
         AID[] retailers = getAgentList("Retailer");
         
@@ -315,9 +359,8 @@ public class HomeAgent extends Agent implements GUIListener
                             System.out.println( offer  + " < " + bestPrice);
 
                     		//Compare with budgetLimit
-                            if(offer <= bestPrice){
+                            if(offer <= idealBestPrice){
                                 bestPrice = offer;// set new better limit
-                                idealBestPrice = truncatedDouble(bestPrice - 0.15 * bestPrice);
                                 bestOffer = message;
                             }
                     	}catch(NumberFormatException nfe) {
@@ -353,7 +396,7 @@ public class HomeAgent extends Agent implements GUIListener
 
                     printGUI("");
                     ACLMessage reply = bestOffer.createReply();
-                    if( bestPrice > idealBestPrice){//negotiate the new price if the original offer is not good
+                    if( bestPrice > idealBestPrice*0.8){//negotiate the new price if the original offer is not good (reduce 20% of ideal best price)
                     	
                         reply.setPerformative(ACLMessage.REQUEST);
                         
@@ -371,20 +414,20 @@ public class HomeAgent extends Agent implements GUIListener
                         send(reply);
                     }
                     else{//Accept the original offer
-                        negoBestPrice = bestPrice;
                         
                         //Send agree message to retailer
                         
                         reply.setPerformative(ACLMessage.AGREE);
                         reply.setContent(""+bestPrice);
                         System.out.println("Accept Current Offer: $"+ reply.getContent());
-
+                        
                         // Tola: print gui
                         printGUI(getLocalName() + " accepted the offer <b>$" + bestPrice +"</b> from <font color='red'>" + bestOffer.getSender().getLocalName() + "</font>");
                         send(reply);         
                         
                         //Finish negotiation
                         hasNegotiationFinished = true;
+                        negoBestPrice = bestPrice;
 						System.out.println("  --------- Finished ---------\n");
 						printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
                     }
@@ -396,13 +439,14 @@ public class HomeAgent extends Agent implements GUIListener
         //Tola : handle the counter offer
         retailerSeQue.addSubBehaviour(new MyReceiverBehaviour( this, 5000, template, "3RD" ) {
 			public void handle( ACLMessage message) {
+                /*
 				if( bestPrice <= idealBestPrice) {
                     System.out.println("");
                     System.out.println("3RD");
                     // no need to re-negotiate
                     System.out.println("Best price ("+bestPrice+") <= ideal budget limit ("+idealBestPrice+")");
 					return;
-				}
+				}*/
 				if (message != null ) {
                     System.out.println("");
                     System.out.println("3RD");
@@ -428,13 +472,14 @@ public class HomeAgent extends Agent implements GUIListener
 	                        send(reply);
 	                    }
 	                    else{//Accept current offer
-	                    	negoBestPrice = bestPrice;
 	                        reply.setPerformative(ACLMessage.AGREE);
 	                        reply.setContent(""+bestPrice);
 	                        System.out.println("Accept the second offer: $"+ reply.getContent());
 	                        // Tola: print gui
                             printGUI(getLocalName() + " accepted the second offer");
+                            //Finish nego
                             hasNegotiationFinished = true;
+	                    	negoBestPrice = bestPrice;
 	                        send(reply);                        
 	                    }
 
@@ -449,7 +494,9 @@ public class HomeAgent extends Agent implements GUIListener
 						System.out.println("The Second Proposal Accepted");
 						System.out.println("The Second Proposal Offer: $"+ negoBestPrice);
                         printGUI(getLocalName() + "'s second offer is accepted, which is <b>$" + negoBestPrice+"</b>");
+                        //Finish nego
                         hasNegotiationFinished = true;
+                        bestPrice = negoBestPrice;
 						System.out.println("  --------- Finished ---------\n");
 						printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
 						
@@ -459,17 +506,6 @@ public class HomeAgent extends Agent implements GUIListener
 						System.out.println("The Second Propsal Refused");
                         System.out.println("The Second Offer: $"+bestPrice);
                         printGUI(getLocalName() + "'s second offer is rejected, which is <b>$" + negoBestPrice+"</b>");
-                        /*
-                        System.out.println("Accept the previous offer: $" + bestPrice);
-                        printGUI(getLocalName() + " takes the previous offer, which is $"+ bestPrice);
-                        //Send agree message to retailer
-                        ACLMessage reply = bestOffer.createReply();
-                        reply.setPerformative(ACLMessage.AGREE);
-                        reply.setContent(""+bestPrice);
-                        //Finish negotiation
-						System.out.println("  --------- Finished ---------\n");
-                        printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
-                        */
                         //TODo: If possible do 1 more stage
                         ACLMessage thirdMessage = bestOffer.createReply();
                         thirdMessage.setPerformative(ACLMessage.REQUEST);
@@ -505,6 +541,9 @@ public class HomeAgent extends Agent implements GUIListener
                                 System.out.println("Proposal Accepted");
                                 System.out.println("Proposal Offer: $"+ negoBestPrice);
                                 printGUI(bestOffer.getSender().getLocalName() + " accepted the offer for <b>$" + negoBestPrice+"</b>");
+
+                                //Assign new best price
+                                bestPrice = negoBestPrice;
                                 
                                 fourthMessage.setContent(""+negoBestPrice);
                                 fourthMessage.setPerformative(ACLMessage.AGREE);
@@ -520,6 +559,8 @@ public class HomeAgent extends Agent implements GUIListener
                                 fourthMessage.setPerformative(ACLMessage.AGREE);
                                 send(fourthMessage);
                             }
+
+                            hasNegotiationFinished = true;
 							System.out.println("  --------- Finished ---------\n");
 							printGUI("<font color='gray'>---- Finished the Negotiation -----</font>");
 						} 
@@ -527,16 +568,25 @@ public class HomeAgent extends Agent implements GUIListener
 							System.out.println("No message for 4th round");
 						}
 					}	
-				});
-            
+                });
+                
+        //Print the summary   
         retailerSeQue.addSubBehaviour(new OneShotBehaviour(){
             public void action(){
                 if(hasNegotiationFinished){
                     System.out.println("Negotiation finished");
                     System.out.println("Total Predicted Comsumption: "+ totalPredictedEnergyConsumption);
+                    System.out.println("Best Price: $"+ bestPrice);
                     System.out.println("Amount of paid money: $" + (totalPredictedEnergyConsumption*bestPrice));
                     budgetLimit = budgetLimit - (totalPredictedEnergyConsumption*bestPrice);
                     System.out.println("Remaining Budget: $"+ budgetLimit);
+
+                    printGUI("");
+                    printGUI("<font color='black'>---- SUMMARY ----</font>");
+                    printGUI("Total Predicted Comsumption: "+ totalPredictedEnergyConsumption);
+                    printGUI("Best Price: $"+ bestPrice);
+                    printGUI("Amount of paid money: $" + (totalPredictedEnergyConsumption*bestPrice));
+                    printGUI("Remaining Budget: $"+ budgetLimit);
                 }else{
                     System.out.println("Negotiation has not finished yet!!");
                 }
@@ -546,6 +596,11 @@ public class HomeAgent extends Agent implements GUIListener
         
         //Send result back to the retailer agent
         retailerSeQue.addSubBehaviour(new SendResultToApplianceBehaviour());
+
+
+        MessageTemplate actualMessageTemplate =MessageTemplate.MatchPerformative(ACLMessage.INFORM_REF);
+        //Receive actual consumption
+        retailerSeQue.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
     }
 
     
