@@ -199,17 +199,20 @@ public class ApplianceAgent extends Agent {
 			        // add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
 		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
 		        	
-		        	// only listen to Home Agent with Inform message
-		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
-		        			MessageTemplate.MatchSender(getHomeAgent()));
-
-					// add behaviour that receives messages
-		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
-		        	
 		        	// add behaviour to report actual usage
 		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
 		        	
 			        addBehaviour(communicationSequence);
+			        
+			    	// only listen to Home Agent with Inform message
+			    	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
+			    			MessageTemplate.MatchSender(getHomeAgent()));
+			        
+					// add behaviour that receives messages
+			    	addBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
+			        
+			        // after the 1st tick, the update duration is set to 30s
+			        this.reset(UPATE_DURATION);
             	}
             }
 		};
@@ -245,9 +248,6 @@ public class ApplianceAgent extends Agent {
         
         // add sequential behaviour to the Agent
         addBehaviour(sb);
-        
-        // after the 1st tick, the update duration is set to 30s
-        communicateToHome.reset(UPATE_DURATION);
 	}
      
 	/**
@@ -447,7 +447,7 @@ public class ApplianceAgent extends Agent {
 		
 		@Override
 		public void action() {
-			System.out.println(getLocalName() + ": Waiting for Result Message....");
+			//System.out.println(getLocalName() + ": Waiting for Result Message....");
 
 			// retrieve message from message queue if there is
 	        ACLMessage msg= receive(this.msgTemplate);
@@ -495,7 +495,6 @@ public class ApplianceAgent extends Agent {
 		applicantDict.put("TVE", 23);
 		applicantDict.put("UNE", 24);
 	}
-	
 	
 	/**
 	 * Print to GUI agent
