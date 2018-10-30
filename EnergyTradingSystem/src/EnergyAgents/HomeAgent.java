@@ -280,15 +280,15 @@ public class HomeAgent extends Agent implements GUIListener
 		
 		@Override
 		public void action() {
-			System.out.println(getLocalName() + ": Waiting for acutal consumption....");
+			System.out.println("GET ACTUAL CONSUMPTION: "+ getLocalName() + ": Waiting for acutal consumption....");
 
 			// Retrieve message from message queue if there is
 	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
 		        // Print out message content
-                System.out.println(getLocalName()+ ": Received consumption " + msg.getContent() + " from " + msg.getSender().getLocalName());
+                System.out.println("GET ACTUAL CONSUMPTION: "+getLocalName()+ ": Received consumption " + msg.getContent() + " from " + msg.getSender().getLocalName());
                 totalActualedEnergyConsumption += Double.parseDouble(msg.getContent());
-                System.out.println("Total Actual consumption: "+ totalActualedEnergyConsumption);
+                System.out.println("TOTAL ACTUAL CONSUMPTION: "+ totalActualedEnergyConsumption);
                 ++count;
             }
 	        // Block the behaviour from terminating and keep listening to the message
@@ -598,9 +598,9 @@ public class HomeAgent extends Agent implements GUIListener
         retailerSeQue.addSubBehaviour(new SendResultToApplianceBehaviour());
 
 
-        MessageTemplate actualMessageTemplate =MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
+        MessageTemplate actualMessageTemplate =MessageTemplate.MatchPerformative(ACLMessage.INFORM_REF);
         //Receive actual consumption
-        //retailerSeQue.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
+        retailerSeQue.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
     }
 
     

@@ -166,7 +166,7 @@ public class ApplianceAgent extends Agent {
 		SequentialBehaviour sb = new SequentialBehaviour();
         
         SearchHomeAgent searchHomeAgent = new SearchHomeAgent();
-        /*
+        
         // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
         // 1st tick is set to 1 second
         TickerBehaviour communicateToHome = new TickerBehaviour(this, 1000) {
@@ -218,7 +218,8 @@ public class ApplianceAgent extends Agent {
             	}
             }
 		};
-		*/
+		
+		/*
 		//TODO : @DAVE This code below is for testing (run only 1)
 		// Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
 		DelayBehaviour communicateToHome = new DelayBehaviour(this, 3000) {
@@ -235,36 +236,40 @@ public class ApplianceAgent extends Agent {
 					
 			        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
 			        
-		        	// Create message to send to HomeAgent
+		        	// create message to send to HomeAgent
 		            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
 		        	msg.addReceiver(getHomeAgent());
-		            // Set the interaction protocol
+		        	
+		            // set the interaction protocol
 		        	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
 
-		        	// Specify the reply deadline (10 seconds)
+		        	// specify the reply deadline (10 seconds)
 		        	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
 		            
-		    		// Set message content
+		    		// set message content
 		        	msg.setContent(predictionUsage);
 		        	isFinishedNegotiated = false;
 		        	
-			        // Add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
+			        // add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
 		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
 		        	
-		        	// Only listen to Home Agent with Inform message
-		        	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
-		        			MessageTemplate.MatchSender(getHomeAgent()));
-
-					// Add behaviour that receives messages
-		        	communicationSequence.addSubBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
-		        	
-		        	// Add behaviour to report Actual Usage
-		        	//communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
+		        	// add behaviour to report actual usage
+		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
 		        	
 			        addBehaviour(communicationSequence);
+			        
+			    	// only listen to Home Agent with Inform message
+			    	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
+			    			MessageTemplate.MatchSender(getHomeAgent()));
+			        
+					// add behaviour that receives messages
+			    	addBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
+			        
+			        // after the 1st tick, the update duration is set to 30s
+			        this.reset(UPATE_DURATION);
 				}
 			}
-		};
+		};*/
         
         // trigger service to find home agent
         sb.addSubBehaviour(searchHomeAgent);	 
@@ -359,12 +364,12 @@ public class ApplianceAgent extends Agent {
     	String energyConsumed = Double.toString(getActualEnergyUsage(USAGE_DURATION));
         	
     	// send messages to home agents
-	    ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+	    ACLMessage msg = new ACLMessage(ACLMessage.INFORM_REF);
 	    msg.setContent(energyConsumed);
 	    msg.addReceiver(getHomeAgent());
 	    
 	    // send Message
-	    System.out.println(getLocalName() + ": Sending message " + msg.getContent() + " to ");
+	    System.out.println("ACTUAL: "+ getLocalName() + ": Sending message " + msg.getContent() + " to ");
 	    
 	    Iterator receivers = msg.getAllIntendedReceiver();
 	    while(receivers.hasNext()) {
