@@ -226,27 +226,37 @@ public class HomeAgent extends Agent implements GUIListener {
     // Send result to appliance agents
     private class SendResultToApplianceBehaviour extends OneShotBehaviour {
         public void action() {
-            if(bestOffer!=null){
-                System.out.println("\n**** Send Result ****");
+            // Send the result after finishing negotiation
+            AID[] appliances = getAgentList("Appliance");
+            ACLMessage resultMessage = new ACLMessage(ACLMessage.CONFIRM);
+            for (AID appliance : appliances) {
+                resultMessage.addReceiver(appliance);
+            }
+            System.out.println("\n**** Send Result ****");
+            if(bestOffer!=null){// has offer and send result back 
                 System.out.println("Result:" + bestPrice);
     
                 printGUI("");
                 printGUI("Send result, which is <b>$" +Utilities.truncatedDouble( bestPrice) + "</b> to appliance agents");
     
-                // Send the result after finishing negotiation
-                AID[] appliances = getAgentList("Appliance");
-                ACLMessage resultMessage = new ACLMessage(ACLMessage.CONFIRM);
-                for (AID appliance : appliances) {
-                    resultMessage.addReceiver(appliance);
-                }
                 resultMessage.setContent("" + bestPrice);
     
                 Iterator receivers = resultMessage.getAllIntendedReceiver();
                 while (receivers.hasNext()) {
                     System.out.println(((AID) receivers.next()).getLocalName());
                 }
-                send(resultMessage);
             }
+            else{//send failure if there is no a 
+                System.out.println("Result: NO OFFER");
+                resultMessage.setContent("Failure");
+                printGUI("");
+                printGUI("Budget is not enough");
+                Iterator receivers = resultMessage.getAllIntendedReceiver();
+                while (receivers.hasNext()) {
+                    System.out.println(((AID) receivers.next()).getLocalName());
+                } 
+            }
+            send(resultMessage);
         }
     }
 
@@ -335,7 +345,7 @@ public class HomeAgent extends Agent implements GUIListener {
         for (AID retailer : retailers) {
             messageRetailer.addReceiver(retailer);
 
-            // Got 5s to get the receiver the offers before timeout
+            // Got 100ms to get the receiver the offers before timeout
             sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 100, negoTemplate, "1ST") {
                 public void handle(ACLMessage message) {
                     if (message != null) {
@@ -372,7 +382,7 @@ public class HomeAgent extends Agent implements GUIListener {
          * 2ND --- Get the orders, choose the best deal and decide whether ask for a
          * better deal
          */
-        // Delay 3s before sending the request
+        // Delay 2s before sending the request
         sequentialBehaviour.addSubBehaviour(new DelayBehaviour(this, 2000) {
             public void handleElapsedTimeout() {
                 if (bestOffer == null) {
@@ -431,6 +441,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
         /** 3RD --- Get the counter offer if have from the retailer agent */
         // Tola : handle the counter offer
+        // have 3s before timeout
         sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 3000, negoTemplate, "3RD") {
             public void handle(ACLMessage message) {
                 if (message != null && !hasNegotiationFinished) {
@@ -493,10 +504,10 @@ public class HomeAgent extends Agent implements GUIListener {
                         System.out.println("The Second Offer: $" + bestPrice);
                         printGUI(
                                 getLocalName() + "'s second offer is rejected, which is <b>$" + negoBestPrice + "</b>");
-                        // TODo: If possible do 1 more stage
+
                         ACLMessage thirdMessage = message.createReply();
                         thirdMessage.setPerformative(ACLMessage.REQUEST);
-                        negoBestPrice = Utilities.truncatedDouble(negoBestPrice + negoBestPrice * 0.1); // increase 10%
+                        negoBestPrice = Utilities.truncatedDouble(negoBestPrice + negoBestPrice * 0.05); // increase 5%
                         thirdMessage.setContent("" + negoBestPrice);
                         printGUI("<font color='gray' size='-1'>Stage 2:</font>");
                         System.out.println(getLocalName() + "send the third offer, which is " + negoBestPrice);
@@ -511,7 +522,7 @@ public class HomeAgent extends Agent implements GUIListener {
         }); // end counter behaviour
 
         // 4TH --- Final decision
-        // have 0s before timeout
+        // have 5s before timeout
         sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 5000, negoTemplate, "4TH") {
             public void handle(ACLMessage message) {
                 if (message != null &&  !hasNegotiationFinished) {
@@ -582,7 +593,6 @@ public class HomeAgent extends Agent implements GUIListener {
                 }
             }
         });
-       
         // Send result back to the retailer agent
         sequentialBehaviour.addSubBehaviour(new SendResultToApplianceBehaviour());
 
@@ -591,6 +601,7 @@ public class HomeAgent extends Agent implements GUIListener {
         sequentialBehaviour.addSubBehaviour(new GetActualConsumptionBehaviour(this, actualMessageTemplate));
 
         // Send the actual consumption to retailer agent
+        // have 1s before timeout
         sequentialBehaviour.addSubBehaviour(new DelayBehaviour(this, 1000) {
             public void handleElapsedTimeout() {
                 if (totalActualedEnergyConsumption != 0 && bestOffer!=null) {
@@ -610,6 +621,7 @@ public class HomeAgent extends Agent implements GUIListener {
         });
 
         // Get the overcharge price from retailer agent and prompt the final report
+        // Have 2s before timeout
         sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 2000, negoTemplate, "Get Overcharge Price Stage") {
             public void handle(ACLMessage message){
                 if(message != null && bestOffer!=null && hasNegotiationFinished){
