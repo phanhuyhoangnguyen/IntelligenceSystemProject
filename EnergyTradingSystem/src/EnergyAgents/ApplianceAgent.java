@@ -50,9 +50,9 @@ public class ApplianceAgent extends Agent {
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final int HALF_HOUR = 1800000;
 
-	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	// ! Testing for VS Code
-	//private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
+	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
@@ -311,7 +311,11 @@ public class ApplianceAgent extends Agent {
 	        // home refuse to the request - communication is set to finished
     		communicateIsFinished = true;
     		
-    		// this will occur when Home is running out of the budget - Appliance will stop sending request
+    		// this will occur when Home is running out of the budget - Appliance will stop sending request after the current request is done
+        	// add behaviour to report actual usage
+        	addBehaviour(new ReportingActualEnergyUsage());
+        	
+        	// remove behaviour to stop sending the request
     		sequenceCommunication.removeSubBehaviour(communicateWithHome);
 
         	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request. Stop sending the request for next period.");
@@ -338,8 +342,6 @@ public class ApplianceAgent extends Agent {
     	@Override
         protected void handleAllResultNotifications(Vector notifications) {
         	System.out.println(getLocalName() + ": the request is completed!");
-        	// print to GUI
-	        printGUI(getLocalName() + ": the request is completed!");
         }
     }
 	
