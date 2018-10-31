@@ -108,7 +108,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 		negoMechanism = Mechanism.RANDOM;
 		negoCounterOffer = 3;
 		negoCounter = 0;
-		negoTimeWait = 15;	// 15 seconds
+		negoTimeWait = 5;	// 5 seconds
 		
 		
 		buyFrom = null;
@@ -401,7 +401,6 @@ public class RetailerAgent extends Agent implements GUIListener{
 				ACLMessage reply = msg.createReply();
 				//reply.setConversationId(msg.getConversationId());
 				reply.setProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
-				//reply.setProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
 				
 				// correspondent for individual response from home agent
 				switch(msg.getPerformative()) {

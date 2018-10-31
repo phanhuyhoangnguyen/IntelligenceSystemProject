@@ -402,7 +402,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
                         reply.setPerformative(ACLMessage.REQUEST);
 
-                        negoBestPrice = Utilities.truncatedDouble(bestPrice * 0.9);// reduce 10% of the current deal
+                        negoBestPrice = Utilities.truncatedDouble(bestPrice * 0.8);// reduce 20% of the current deal
 
                         reply.setContent(String.valueOf(negoBestPrice));
 
