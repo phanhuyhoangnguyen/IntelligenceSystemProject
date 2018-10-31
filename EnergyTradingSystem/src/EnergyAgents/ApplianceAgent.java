@@ -135,11 +135,9 @@ public class ApplianceAgent extends Agent {
 						startCommunication();
 						isPausing = false;
 					} else if (msg.getContent().compareToIgnoreCase("pause") == 0) {
-						isPausing = true;
-				        printGUI(getLocalName() +  ": state is changed to pause");
+						pauseCommunication();
 					} else if (msg.getContent().compareToIgnoreCase("resume") == 0) {
-						isPausing = false;
-						printGUI(getLocalName() +  ": state is changed to resume");
+						resumeCommunication();
 					}
 				}
 			} else {
@@ -171,7 +169,13 @@ public class ApplianceAgent extends Agent {
 	}
 	
 	private void pauseCommunication() {
-		
+		isPausing = true;
+        printGUI(getLocalName() +  ": state is changed to pause");
+	}
+	
+	private void resumeCommunication() {
+		isPausing = false;
+		printGUI(getLocalName() +  ": state is changed to resume");
 	}
 	
 	private class CommunicateWithHome extends TickerBehaviour {
