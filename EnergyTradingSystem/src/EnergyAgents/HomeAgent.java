@@ -248,7 +248,7 @@ public class HomeAgent extends Agent implements GUIListener {
             }
             else{//send failure if there is no a 
                 System.out.println("Result: NO OFFER");
-                resultMessage.setContent("Failure");
+                resultMessage.setContent("failure");
                 printGUI("");
                 printGUI("Budget is not enough");
                 Iterator receivers = resultMessage.getAllIntendedReceiver();

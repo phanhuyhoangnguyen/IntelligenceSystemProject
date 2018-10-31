@@ -50,9 +50,9 @@ public class ApplianceAgent extends Agent {
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final int HALF_HOUR = 1800000;
 
-	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	// ! Testing for VS Code
-	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
+	//private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
@@ -62,6 +62,8 @@ public class ApplianceAgent extends Agent {
 	private AID homeAgent;
 	private static final String HomeAgentService = "Home";
 	private boolean communicateIsFinished = true;
+	private TickerBehaviour communicateWithHome;
+	private SequentialBehaviour sequenceCommunication;
 	
 	// For manipulating Ticker Behaviour From GUI
 	private boolean isPausing;										// pause the operations executed in the ticker behaviour
@@ -123,19 +125,19 @@ public class ApplianceAgent extends Agent {
 	private class handleCommandFromGUI extends CyclicBehaviour{
 		@Override
 		public void action() {
-			ACLMessage msg = myAgent.receive();
+			MessageTemplate messageTemplate = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+			
+			ACLMessage msg = myAgent.receive(messageTemplate);
 			if (msg != null) {
 				if (msg.getPerformative() == ACLMessage.INFORM) {
 					if (msg.getContent().compareToIgnoreCase("start") == 0) {
 						printGUIClean();
-						startNegotiation();
+						startCommunication();
 						isPausing = false;
 					} else if (msg.getContent().compareToIgnoreCase("pause") == 0) {
-						isPausing = true;
-				        printGUI(getLocalName() +  ": state is changed to pause");
+						pauseCommunication();
 					} else if (msg.getContent().compareToIgnoreCase("resume") == 0) {
-						isPausing = false;
-						printGUI(getLocalName() +  ": state is changed to resume");
+						resumeCommunication();
 					}
 				}
 			} else {
@@ -147,119 +149,75 @@ public class ApplianceAgent extends Agent {
 	/**
 	 * Start negotiation
 	 */
-	private void startNegotiation() {
-		SequentialBehaviour sb = new SequentialBehaviour();
+	private void startCommunication() {
+		sequenceCommunication = new SequentialBehaviour();
         
         SearchHomeAgent searchHomeAgent = new SearchHomeAgent();
         
         // Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
         // 1st tick is set to 1 second
-        TickerBehaviour communicateToHome = new TickerBehaviour(this, 1000) {
-    
-            protected void onTick() {
-            	 // onTick should only be triggered if there is no request is in process and state of Appliance agent is not pausing
-            	if (communicateIsFinished && !isPausing) {
-		        	// change status for the new request
-            		communicateIsFinished = false;
-		        	
-		        	String predictionUsage;
-					double predictedValue = getUsagePrediction(USAGE_DURATION);
-					
-					// round up the double value to 2 decimal places
-					DecimalFormat df = new DecimalFormat("#.##");
-					predictionUsage = df.format(predictedValue);
-					
-			        System.out.println(getLocalName() +" : Prediction value for the next period is: " + predictionUsage);
-			        
-		        	// create message to send to HomeAgent
-		            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-		        	msg.addReceiver(getHomeAgent());
-		        	
-		            // set the interaction protocol
-		        	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
-
-		        	// specify the reply deadline (10 seconds)
-		        	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
-		            
-		    		// set message content
-		        	msg.setContent(predictionUsage);
-		        	
-			        // add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
-		        	addBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
-		        	
-		        	// only listen to Home Agent with Inform message
-			    	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
-			    			MessageTemplate.MatchSender(getHomeAgent()));
-			        
-					// add behaviour that receives messages contained result of negotation
-			    	addBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
-			    	
-			        // after the 1st tick, the update duration is set to 30s
-			        this.reset(UPATE_DURATION);
-            	}
-            }
-		};
-		
-		/*
-		//TODO : @DAVE This code below is for testing (run only 1) - delete later
-		// Communicate to Home Agent for requesting buy energy with prediction amount and send the actual usage
-		DelayBehaviour communicateToHome = new DelayBehaviour(this, 3000) {
-			protected void handleElapsedTimeout() {
-				if (true) {
-					SequentialBehaviour communicationSequence = new SequentialBehaviour();
-		        	
-		        	String predictionUsage;
-					double predictedValue = getUsagePrediction(USAGE_DURATION);
-					
-					// round up the double value to 2 decimal places
-					DecimalFormat df = new DecimalFormat("#.##");
-					predictionUsage = df.format(predictedValue);
-					
-			        System.out.println("prediction of " + getLocalName() + "(" + getApplianceName() + "): " + predictionUsage);
-			        
-		        	// create message to send to HomeAgent
-		            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
-		        	msg.addReceiver(getHomeAgent());
-		        	
-		            // set the interaction protocol
-		        	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
-
-		        	// specify the reply deadline (10 seconds)
-		        	msg.setReplyByDate(new Date(System.currentTimeMillis() + 10000));
-		            
-		    		// set message content
-		        	msg.setContent(predictionUsage);
-		        	isFinishedNegotiated = false;
-		        	
-			        // add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
-		        	communicationSequence.addSubBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
-		        	
-		        	// add behaviour to report actual usage
-		        	communicationSequence.addSubBehaviour(new ReportingActualEnergyUsage());
-		        	
-			        addBehaviour(communicationSequence);
-			        
-			    	// only listen to Home Agent with Inform message
-			    	MessageTemplate messageTemplate = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
-			    			MessageTemplate.MatchSender(getHomeAgent()));
-			        
-					// add behaviour that receives messages
-			    	addBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
-			        
-			        // after the 1st tick, the update duration is set to 30s
-			        this.reset(UPATE_DURATION);
-				}
-			}
-		};*/
+        communicateWithHome = new CommunicateWithHome(this, 1000);
         
         // trigger service to find home agent
-        sb.addSubBehaviour(searchHomeAgent);	 
+        sequenceCommunication.addSubBehaviour(searchHomeAgent);	 
         
         // sending message every 5 seconds
-        sb.addSubBehaviour(communicateToHome);
+        sequenceCommunication.addSubBehaviour(communicateWithHome);
         
         // add sequential behaviour to the Agent
-        addBehaviour(sb);
+        addBehaviour(sequenceCommunication);
+	}
+	
+	private void pauseCommunication() {
+		isPausing = true;
+        printGUI(getLocalName() +  ": state is changed to pause");
+	}
+	
+	private void resumeCommunication() {
+		isPausing = false;
+		printGUI(getLocalName() +  ": state is changed to resume");
+	}
+	
+	private class CommunicateWithHome extends TickerBehaviour {
+		public CommunicateWithHome(Agent agent, long period) {
+			super(agent, period);
+		}
+
+		@Override
+		protected void onTick() {
+			// onTick should only be triggered if there is no request is in process and state of Appliance agent is not pausing
+        	if (communicateIsFinished && !isPausing) {
+	        	// change status for the new request
+        		communicateIsFinished = false;
+	        	
+	        	double predictedValue = getUsagePrediction(USAGE_DURATION);
+				
+				// round up the double value to 2 decimal places
+				DecimalFormat df = new DecimalFormat("#.##");
+				String predictionUsage = df.format(predictedValue);
+				
+		        System.out.println(getLocalName() +" : Prediction value for the next period is: " + predictionUsage + " Watts");
+		        
+	        	// create message to send to HomeAgent
+	            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+	        	msg.addReceiver(getHomeAgent());
+	        	
+	            // set the interaction protocol
+	        	msg.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
+
+	        	// specify the reply deadline (20 seconds)
+	        	msg.setReplyByDate(new Date(System.currentTimeMillis() + 20000));
+	            
+	    		// set message content
+	        	msg.setContent(predictionUsage);
+	        	
+		        // add AchieveREInitiator behaviour with the message to send Prediction and Request to buy
+	        	addBehaviour(new SendEnergyUsagePrediction(getApplianceAgent(), msg));
+	        	
+		        // after the 1st tick, the update duration is set to 30s
+		        reset(UPATE_DURATION);
+        	}
+		}
 	}
      
 	/**
@@ -319,18 +277,26 @@ public class ApplianceAgent extends Agent {
 	 *  This behaviour send usage prediction for home agent
 	 */
     private class SendEnergyUsagePrediction extends AchieveREInitiator {
-    	public SendEnergyUsagePrediction(Agent a, ACLMessage msg) {
-			super(a, msg);
+    	
+    	public SendEnergyUsagePrediction(Agent agent, ACLMessage msg) {
+			super(agent, msg);
 		}
+    	
 		// Method to handle an agree message from responder
+    	@Override
 		protected void handleAgree(ACLMessage agree) {
 			System.out.println(getLocalName() + ": " + agree.getSender().getLocalName() + " has agreed to the request");
-			
-		    // print to GUI
-	        printGUI(getLocalName() +  ": " + agree.getSender().getLocalName() + " has agreed to the request");
+	        
+	        // home agree to the request, negotiation process between Home Appliance and Retailers start. Appliance will wait for the result of negotiation
+        	// only listen to Home Agent with Inform message
+	    	MessageTemplate messageTemplate = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
+	    	
+			// add behaviour that receives messages contained result of negotation
+	    	addBehaviour(new ResultReceiver(getApplianceAgent(), messageTemplate));
 		}
 
 		// Method to handle an inform message from Home Agent after its negotiation with Retailer is success
+    	@Override
         protected void handleInform(ACLMessage inform) {
         	System.out.println(getLocalName() + ": received the inform from " + inform.getSender().getLocalName());
         	
@@ -339,14 +305,19 @@ public class ApplianceAgent extends Agent {
         }
         
         // Method to handle a refuse message from responder
+    	@Override
         protected void handleRefuse(ACLMessage refuse) {
         	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request.");
         	
 		    // print to GUI
 	        printGUI(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request.");
+
+	        // home refuse to the request - communication is set to finished
+    		communicateIsFinished = true;
         }
 
         // Method to handle a failure message (failure in delivering the message)
+    	@Override
         protected void handleFailure(ACLMessage failure) {
         	if (failure.getSender().equals(myAgent.getAMS())) {
         		// FAILURE notification from the JADE runtime -> the receiver does not exist
@@ -360,6 +331,7 @@ public class ApplianceAgent extends Agent {
         }
             
         // Method that is invoked when notifications have been received from all responders
+    	@Override
         protected void handleAllResultNotifications(Vector notifications) {
         	System.out.println(getLocalName() + ": the request is completed!");
         	// print to GUI
@@ -425,24 +397,30 @@ public class ApplianceAgent extends Agent {
 		
 		@Override
 		public void action() {
-			//System.out.println(getLocalName() + ": Waiting for Result Message....");
+			// System.out.println(getLocalName() + ": Waiting for Result Message....");
 
 			// retrieve message from message queue if there is
 	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
 		        // print out message content to console
-		        System.out.println(getLocalName() + ": received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
-
-		        // print out message content to GUI
-		        printGUI(getLocalName() + ": received result <b>" + msg.getContent() + "</b> from " + msg.getSender().getLocalName());
+		        System.out.println(getLocalName() + ": received result $" + msg.getContent() + " from " + msg.getSender().getLocalName());
 		        isReceived = true;
+		        String messageReturned = msg.getContent();
 		        
+		        // reformat message to print out the GUI
+		        if (messageReturned.compareToIgnoreCase("failure") != 0) {
+		        	messageReturned =  "$" + msg.getContent();
+		        }
+		        
+		        // print out message content to GUI
+	        	printGUI(getLocalName() + ": received result <b>" + messageReturned + "</b> from " + msg.getSender().getLocalName());
+	        	
 	        	// add behaviour to report actual usage
 	        	addBehaviour(new ReportingActualEnergyUsage());
+			}else {
+				// block the behaviour from terminating and keep listening to the message
+				block();
 			}
-	    
-	        // block the behaviour from terminating and keep listening to the message
-	        block();
 	    }
 		
 		public boolean done() {
