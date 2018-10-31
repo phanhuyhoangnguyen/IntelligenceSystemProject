@@ -213,14 +213,12 @@ public class HomeAgent extends Agent implements GUIListener {
         protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response)
                 throws FailureException {
             if(hasOffer){
-                System.out.println(getLocalName() + ": Action successfully performed, informing initiator");
-                ACLMessage inform = request.createReply();
-                inform.setPerformative(ACLMessage.INFORM);
-                inform.setContent("successfully");
-                return inform;
+                return response;
             }else{
-                System.out.println("Agent "+getLocalName()+": Action failed");
-                throw new FailureException("unexpected-error");
+                System.out.println(getLocalName() + ": refusing to the request and responding with REFUSE");
+                ACLMessage refuse = request.createReply();
+                refuse.setPerformative(ACLMessage.REFUSE);
+                return refuse;
             }
         }
     }
@@ -365,8 +363,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
         // Tola: print asking for propose
         printGUI("");
-        printGUI(getLocalName() + " asks for a proposal, total comsuption <b>" + Utilities.truncatedDouble(totalPredictedEnergyConsumption)
-                + "</b>");
+        printGUI(getLocalName() + " asks for a proposal, total comsuption <b>" + Utilities.truncatedDouble(totalPredictedEnergyConsumption)+ "</b>");
         messageRetailer.setContent(String.valueOf(totalPredictedEnergyConsumption));
         ;
 
