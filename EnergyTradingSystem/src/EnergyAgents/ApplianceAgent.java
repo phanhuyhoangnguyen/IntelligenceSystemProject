@@ -181,7 +181,6 @@ public class ApplianceAgent extends Agent {
 
 		@Override
 		protected void onTick() {
-			System.out.println("The status of communication is: " + communicateIsFinished);
 			// onTick should only be triggered if there is no request is in process and state of Appliance agent is not pausing
         	if (communicateIsFinished && !isPausing) {
 	        	// change status for the new request
@@ -283,9 +282,6 @@ public class ApplianceAgent extends Agent {
     	@Override
 		protected void handleAgree(ACLMessage agree) {
 			System.out.println(getLocalName() + ": " + agree.getSender().getLocalName() + " has agreed to the request");
-			
-		    // print to GUI
-	        printGUI(getLocalName() +  ": " + agree.getSender().getLocalName() + " has agreed to the request");
 	        
 	        // home agree to the request, negotiation process between Home Appliance and Retailers start. Appliance will wait for the result of negotiation
         	// only listen to Home Agent with Inform message
@@ -397,19 +393,24 @@ public class ApplianceAgent extends Agent {
 		
 		@Override
 		public void action() {
-			System.out.println(getLocalName() + ": Waiting for Result Message....");
+			// System.out.println(getLocalName() + ": Waiting for Result Message....");
 
 			// retrieve message from message queue if there is
 	        ACLMessage msg= receive(this.msgTemplate);
-	        System.out.println("message content: " + msg);
 	        if (msg!=null) {
 		        // print out message content to console
-		        System.out.println(getLocalName() + ": received result " + msg.getContent() + " from " + msg.getSender().getLocalName());
-
-		        // print out message content to GUI
-		        printGUI(getLocalName() + ": received result <b>" + msg.getContent() + "</b> from " + msg.getSender().getLocalName());
+		        System.out.println(getLocalName() + ": received result $" + msg.getContent() + " from " + msg.getSender().getLocalName());
 		        isReceived = true;
+		        String messageReturned = msg.getContent();
 		        
+		        // reformat message to print out the GUI
+		        if (messageReturned.compareToIgnoreCase("failure") != 0) {
+		        	messageReturned =  "$" + msg.getContent();
+		        }
+		        
+		        // print out message content to GUI
+	        	printGUI(getLocalName() + ": received result <b>" + messageReturned + "</b> from " + msg.getSender().getLocalName());
+	        	
 	        	// add behaviour to report actual usage
 	        	addBehaviour(new ReportingActualEnergyUsage());
 			}else {
