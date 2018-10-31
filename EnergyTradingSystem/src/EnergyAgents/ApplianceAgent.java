@@ -306,14 +306,18 @@ public class ApplianceAgent extends Agent {
         
         // Method to handle a refuse message from responder
     	@Override
-        protected void handleRefuse(ACLMessage refuse) {
-        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request.");
-        	
-		    // print to GUI
-	        printGUI(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request.");
+        protected void handleRefuse(ACLMessage refuse) {        	
 
 	        // home refuse to the request - communication is set to finished
     		communicateIsFinished = true;
+    		
+    		// this will occur when Home is running out of the budget - Appliance will stop sending request
+    		sequenceCommunication.removeSubBehaviour(communicateWithHome);
+
+        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request. Stop sending the request.");
+
+		    // print to GUI
+	        printGUI(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request.");
         }
 
         // Method to handle a failure message (failure in delivering the message)
