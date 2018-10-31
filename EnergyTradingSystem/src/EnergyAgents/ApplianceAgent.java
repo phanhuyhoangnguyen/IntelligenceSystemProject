@@ -311,7 +311,11 @@ public class ApplianceAgent extends Agent {
 	        // home refuse to the request - communication is set to finished
     		communicateIsFinished = true;
     		
-    		// this will occur when Home is running out of the budget - Appliance will stop sending request
+    		// this will occur when Home is running out of the budget - Appliance will stop sending request after the current request is done
+        	// add behaviour to report actual usage
+        	addBehaviour(new ReportingActualEnergyUsage());
+        	
+        	// remove behaviour to stop sending the request
     		sequenceCommunication.removeSubBehaviour(communicateWithHome);
 
         	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request. Stop sending the request for next period.");
