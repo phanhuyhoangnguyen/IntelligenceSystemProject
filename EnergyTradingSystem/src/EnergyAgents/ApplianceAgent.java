@@ -41,8 +41,8 @@ public class ApplianceAgent extends Agent {
 	private String serviceType;
 	
 	// For Message Communication to HomeAgent
-	// TODO: change this later ///Dave change to 10s
-	private static final int UPATE_DURATION = 10000;				// 30s -> specify the frequency of message sent to Home Agent. 
+	// TODO: change this later ///Dave change to 15s
+	private static final int UPATE_DURATION = 15000;				// 30s -> specify the frequency of message sent to Home Agent. 
 																	// Ideally, this should be equal to USAGE_DURATION. However, waiting 30 mins to see message sent is too long
 	// For energyUsage Stimulation
 	private int actualLivedSeconds;									// number of seconds agents have lived since created
@@ -51,7 +51,7 @@ public class ApplianceAgent extends Agent {
 	private static final int HALF_HOUR = 1800000;
 
 	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
-	// ! Testing
+	// ! Testing for VS Code
 	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	
 	// For prediction

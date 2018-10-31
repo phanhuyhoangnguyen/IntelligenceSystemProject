@@ -341,7 +341,7 @@ public class HomeAgent extends Agent implements GUIListener {
             messageRetailer.addReceiver(retailer);
 
             // Got 5s to get the receiver the offers before timeout
-            sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 0, negoTemplate, "1ST") {
+            sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 100, negoTemplate, "1ST") {
                 public void handle(ACLMessage message) {
                     if (message != null) {
                         // Tola: add try catche, change to double
@@ -379,7 +379,7 @@ public class HomeAgent extends Agent implements GUIListener {
          * better deal
          */
         // Delay 3s before sending the request
-        sequentialBehaviour.addSubBehaviour(new DelayBehaviour(this, 3000) {
+        sequentialBehaviour.addSubBehaviour(new DelayBehaviour(this, 2000) {
             public void handleElapsedTimeout() {
                 if (bestOffer == null) {
                     System.out.println("No offers.");
@@ -402,9 +402,9 @@ public class HomeAgent extends Agent implements GUIListener {
 
                         reply.setContent(String.valueOf(negoBestPrice));
 
-                        printGUI("The best offer is from " + bestOffer.getSender().getLocalName() + ", which is $"
-                                + Utilities.truncatedDouble(bestPrice));
-                        printGUI("Ideal Best Price: $" + Utilities.truncatedDouble(idealBestPrice));
+                        printGUI("The best offer is from " + bestOffer.getSender().getLocalName() + ", which is <b>$"
+                                + Utilities.truncatedDouble(bestPrice)+"</b>");
+                        printGUI("Ideal Best Price: <b>$" + Utilities.truncatedDouble(idealBestPrice)+"</b>");
                         printGUI("<font color='gray'>---- Start Negotiation -----</font>");
                         printGUI("<font color='gray' size='-1'>Stage 1:</font>");
                         System.out.println("Negotiation: Asking for price at $" + reply.getContent());
@@ -437,7 +437,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
         /** 3RD --- Get the counter offer if have from the retailer agent */
         // Tola : handle the counter offer
-        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 0, negoTemplate, "3RD") {
+        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 3000, negoTemplate, "3RD") {
             public void handle(ACLMessage message) {
                 if (message != null && !hasNegotiationFinished) {
                     System.out.println("");
@@ -518,7 +518,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
         // 4TH --- Final decision
         // have 0s before timeout
-        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 0, negoTemplate, "4TH") {
+        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 5000, negoTemplate, "4TH") {
             public void handle(ACLMessage message) {
                 if (message != null &&  !hasNegotiationFinished) {
                     System.out.println("");
@@ -696,7 +696,6 @@ public class HomeAgent extends Agent implements GUIListener {
             dfd.addServices(sd);
             DFService.register(this, dfd);
         } catch (FIPAException fe) {
-            // TODO: handle exception
             fe.printStackTrace();
         }
     }
@@ -738,7 +737,6 @@ public class HomeAgent extends Agent implements GUIListener {
         try {
             DFService.deregister(this);
         } catch (FIPAException fe) {
-            // TODO: handle exception
             fe.printStackTrace();
         }
 
