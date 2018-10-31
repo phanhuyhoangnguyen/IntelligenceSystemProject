@@ -49,8 +49,8 @@ public class MainGUI extends JFrame {
 	private List<AgentController> retailerAgents;
 	private List<AgentController> applianceAgents;
 	
-	
-	private boolean isNegoStarted = false;
+	private boolean isNegoStarted;
+	private boolean isNegoPaused;
 	private JButton mStartButton;
 	private JButton mPauseButton;
 	
@@ -92,6 +92,7 @@ public class MainGUI extends JFrame {
 		setTitle("Energy System");
 		
 		// set default
+
 		printAgent = null;
 		homeAgent = null;
 		retailerAgents = null;
@@ -325,15 +326,13 @@ public class MainGUI extends JFrame {
 		@Override
 		public void actionPerformed(ActionEvent e) {
 			
-			// check is already paused
-			if ( !isNegoStarted ) {
-				return;
-			} else {
-				isNegoStarted = false;
-			}
 			// enable disable button
-			mStartButton.setEnabled(!isNegoStarted);
-			mPauseButton.setEnabled(isNegoStarted);
+			isNegoPaused = !isNegoPaused;
+			if ( isNegoPaused ) {
+				mPauseButton.setText(" Resume ");
+			}else {
+				mPauseButton.setText(" Pause ");
+			}
 						
 			System.out.println("Main GUI: pause negotiation.");
 			
@@ -347,7 +346,11 @@ public class MainGUI extends JFrame {
 				@Override
 				public void action() {
 					ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
-					msg.setContent("pause");
+					if ( isNegoPaused ) {
+						msg.setContent("pause");
+					}else {
+						msg.setContent("resume");
+					}
 					// tell home
 					AID home = new AID("Home", AID.ISLOCALNAME);
 					msg.addReceiver(home);

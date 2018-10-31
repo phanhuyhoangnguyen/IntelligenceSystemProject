@@ -99,7 +99,7 @@ public class RetailerGUIDetails {
 			inputPane.add(txtFixedPrice);
 			
 
-			JLabel l2a = new JLabel("Over Charge Price :", SwingConstants.RIGHT);
+			JLabel l2a = new JLabel("Over Charge %:", SwingConstants.RIGHT);
 			l2a.setPreferredSize(l2a.getPreferredSize());
 			inputPane.add(l2a);
 			JTextField txtOverCharge = new JTextField(16);
