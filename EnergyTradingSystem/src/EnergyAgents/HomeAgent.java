@@ -135,10 +135,7 @@ public class HomeAgent extends Agent implements GUIListener {
         System.out.println(agentName + " " + agentType + ": created.");
 
         // Register the service for Home Agent
-        ServiceDescription sd = new ServiceDescription();
-        sd.setType(this.agentType);
-        sd.setName(this.agentName);
-        register(sd);
+        Utilities.registerService(this, this.agentName, this.agentType);
 
         retailerSequentialBehaviour = new SequentialBehaviour();
 
@@ -679,27 +676,6 @@ public class HomeAgent extends Agent implements GUIListener {
 
     
     /*---- Ultility methods to access DF ---- */
-
-    /**
-     * Test and remove old duplicate DF entries before add new one
-     * 
-     * @param sd
-     */
-    private void register(ServiceDescription sd) {
-        DFAgentDescription dfd = new DFAgentDescription();
-        dfd.setName(getAID());
-        try {
-            DFAgentDescription list[] = DFService.search(this, dfd);
-            if (list.length > 0) {
-                DFService.deregister(this);
-            }
-            dfd.addServices(sd);
-            DFService.register(this, dfd);
-        } catch (FIPAException fe) {
-            fe.printStackTrace();
-        }
-    }
-
     //
     /**
      * Search service from DF
