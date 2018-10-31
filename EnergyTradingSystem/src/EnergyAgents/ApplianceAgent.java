@@ -342,8 +342,6 @@ public class ApplianceAgent extends Agent {
     	@Override
         protected void handleAllResultNotifications(Vector notifications) {
         	System.out.println(getLocalName() + ": the request is completed!");
-        	// print to GUI
-	        printGUI(getLocalName() + ": the request is completed!");
         }
     }
 	
