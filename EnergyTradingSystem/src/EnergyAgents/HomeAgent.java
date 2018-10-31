@@ -69,7 +69,7 @@ public class HomeAgent extends Agent implements GUIListener {
         this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
         this.totalAppliances = 0;
-        this.budgetLimit = getRandomDouble(4000, 4000);
+        this.budgetLimit = Utilities.getRandomDouble(4000, 4000);
 
         // Agent name and type
         this.agentName = "Home";
@@ -186,7 +186,7 @@ public class HomeAgent extends Agent implements GUIListener {
                 ++applianceCount;
 
                 printGUI(getLocalName() + " added <b>" + request.getSender().getLocalName() + "</b>  consumes <b>" + consume
-                        + "</b>, Total <b>" + totalPredictedEnergyConsumption + "</b>");
+                        + "</b>, Total <b>" + Utilities.truncatedDouble(totalPredictedEnergyConsumption) + "</b>");
 
                 // Tola: Communicate with the retailer agents if get all the demand
                 if (totalAppliances == applianceCount) {
@@ -206,6 +206,7 @@ public class HomeAgent extends Agent implements GUIListener {
             }
             else{
                 printGUI("The budget is insufficient");
+                System.out.println("The budget is insufficient");
                 throw new RefuseException("check-failed");
             }
         }
@@ -235,7 +236,7 @@ public class HomeAgent extends Agent implements GUIListener {
                 System.out.println("Result:" + bestPrice);
     
                 printGUI("");
-                printGUI("Send result, which is <b>$" + bestPrice + "</b> to appliance agents");
+                printGUI("Send result, which is <b>$" +Utilities.truncatedDouble( bestPrice) + "</b> to appliance agents");
     
                 // Send the result after finishing negotiation
                 AID[] appliances = getAgentList("Appliance");
@@ -287,7 +288,7 @@ public class HomeAgent extends Agent implements GUIListener {
                 }
                 // Print out the total consumption
                 if (count == totalAppliances) {
-                    printGUI("Total Actual Consumption: <b>" + totalActualedEnergyConsumption + "</b>");
+                    printGUI("Total Actual Consumption: <b>" + Utilities.truncatedDouble(totalActualedEnergyConsumption) + "</b>");
                 }
             }
         }
@@ -320,15 +321,15 @@ public class HomeAgent extends Agent implements GUIListener {
                 System.out.println("");
                 // Print to GUI
                 printGUI("<font color='black'>---- NEGOTIATION ---- </font> ");
-                printGUI("Home Budget: <b>$" + budgetLimit + "</b>");
-                printGUI("Total Consumption: <b>" + totalPredictedEnergyConsumption + "</b>");
-                printGUI("Ideal Best Price: <b>$" + truncatedDouble(idealBestPrice)+"</b>");
+                printGUI("Home Budget: <b>$" + Utilities.truncatedDouble(budgetLimit) + "</b>");
+                printGUI("Total Consumption: <b>" + Utilities.truncatedDouble(totalPredictedEnergyConsumption) + "</b>");
+                printGUI("Ideal Best Price: <b>$" + Utilities.truncatedDouble(idealBestPrice)+"</b>");
                 printGUI("");
             }
         });
 
         // Initialize message and template for communicating with Retailer Agent
-        ACLMessage messageRetailer = newMessage(ACLMessage.CFP);
+        ACLMessage messageRetailer = Utilities.newMessage(ACLMessage.CFP);
 
         MessageTemplate negoTemplate = MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
 
@@ -340,7 +341,7 @@ public class HomeAgent extends Agent implements GUIListener {
             messageRetailer.addReceiver(retailer);
 
             // Got 5s to get the receiver the offers before timeout
-            sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 0, negoTemplate, "1ST") {
+            sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 100, negoTemplate, "1ST") {
                 public void handle(ACLMessage message) {
                     if (message != null) {
                         // Tola: add try catche, change to double
@@ -367,7 +368,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
         // Tola: print asking for propose
         printGUI("");
-        printGUI(getLocalName() + " asks for a proposal, total comsuption <b>" + totalPredictedEnergyConsumption
+        printGUI(getLocalName() + " asks for a proposal, total comsuption <b>" + Utilities.truncatedDouble(totalPredictedEnergyConsumption)
                 + "</b>");
         messageRetailer.setContent(String.valueOf(totalPredictedEnergyConsumption));
         ;
@@ -378,7 +379,7 @@ public class HomeAgent extends Agent implements GUIListener {
          * better deal
          */
         // Delay 3s before sending the request
-        sequentialBehaviour.addSubBehaviour(new DelayBehaviour(this, 3000) {
+        sequentialBehaviour.addSubBehaviour(new DelayBehaviour(this, 2000) {
             public void handleElapsedTimeout() {
                 if (bestOffer == null) {
                     System.out.println("No offers.");
@@ -397,19 +398,19 @@ public class HomeAgent extends Agent implements GUIListener {
 
                         reply.setPerformative(ACLMessage.REQUEST);
 
-                        negoBestPrice = truncatedDouble(bestPrice * 0.9);// reduce 10% of the current deal
+                        negoBestPrice = Utilities.truncatedDouble(bestPrice * 0.9);// reduce 10% of the current deal
 
                         reply.setContent(String.valueOf(negoBestPrice));
 
-                        printGUI("The best offer is from " + bestOffer.getSender().getLocalName() + ", which is $"
-                                + bestPrice);
-                        printGUI("Ideal Best Price: $" + idealBestPrice);
+                        printGUI("The best offer is from " + bestOffer.getSender().getLocalName() + ", which is <b>$"
+                                + Utilities.truncatedDouble(bestPrice)+"</b>");
+                        printGUI("Ideal Best Price: <b>$" + Utilities.truncatedDouble(idealBestPrice)+"</b>");
                         printGUI("<font color='gray'>---- Start Negotiation -----</font>");
                         printGUI("<font color='gray' size='-1'>Stage 1:</font>");
                         System.out.println("Negotiation: Asking for price at $" + reply.getContent());
-                        printGUI(getLocalName() + " received an offer <b>$" + bestPrice + "</b> from <font color='red'>"
+                        printGUI(getLocalName() + " received an offer <b>$" + Utilities.truncatedDouble(bestPrice )+ "</b> from <font color='red'>"
                                 + bestOffer.getSender().getLocalName() + "</font>");
-                        printGUI(getLocalName() + " sends a new offer <b>$" + negoBestPrice + "</b>");
+                        printGUI(getLocalName() + " sends a new offer <b>$" + Utilities.truncatedDouble(negoBestPrice) + "</b>");
                         send(reply);
                     } else {// Accept the original offer
 
@@ -420,7 +421,7 @@ public class HomeAgent extends Agent implements GUIListener {
                         System.out.println("Accept Current Offer: $" + reply.getContent());
 
                         // Tola: print gui
-                        printGUI(getLocalName() + " accepted the offer <b>$" + bestPrice
+                        printGUI(getLocalName() + " accepted the offer <b>$" + Utilities.truncatedDouble(bestPrice)
                                 + "</b> from <font color='red'>" + bestOffer.getSender().getLocalName() + "</font>");
                         send(reply);
 
@@ -436,7 +437,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
         /** 3RD --- Get the counter offer if have from the retailer agent */
         // Tola : handle the counter offer
-        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 0, negoTemplate, "3RD") {
+        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 3000, negoTemplate, "3RD") {
             public void handle(ACLMessage message) {
                 if (message != null && !hasNegotiationFinished) {
                     System.out.println("");
@@ -448,8 +449,8 @@ public class HomeAgent extends Agent implements GUIListener {
                             reply.setPerformative(ACLMessage.REQUEST);
                             try {
                                 double offer = Double.parseDouble(bestOffer.getContent());
-                                negoBestPrice = (offer * getRandomDouble(0.5, 0.10)) / 100; // negotiation 5% off
-                                negoBestPrice = truncatedDouble(negoBestPrice);
+                                negoBestPrice = (offer * Utilities.getRandomDouble(0.5, 0.10)) / 100; // negotiation 5% - 10% off
+                                negoBestPrice = Utilities.truncatedDouble(negoBestPrice);
                             } catch (NumberFormatException nfe) {
                                 System.out.println("Not understand");
                                 return;
@@ -459,7 +460,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
                             System.out.println("Second Negotiation: Asking for price at $" + reply.getContent());
                             printGUI("<font color='gray' size='-1'>Stage 2:</font>");
-                            printGUI(getLocalName() + " sends the second offer <b>$" + negoBestPrice + "</b>");
+                            printGUI(getLocalName() + " sends the second offer <b>$" + Utilities.truncatedDouble(negoBestPrice) + "</b>");
                             send(reply);
                         } else {// Accept current offer
                             reply.setPerformative(ACLMessage.AGREE);
@@ -484,7 +485,7 @@ public class HomeAgent extends Agent implements GUIListener {
                         System.out.println("The Second Proposal Accepted");
                         System.out.println("The Second Proposal Offer: $" + negoBestPrice);
                         printGUI(
-                                getLocalName() + "'s second offer is accepted, which is <b>$" + negoBestPrice + "</b>");
+                                getLocalName() + "'s second offer is accepted, which is <b>$" + Utilities.truncatedDouble(negoBestPrice) + "</b>");
                         // Finish nego
                         hasNegotiationFinished = true;
                         bestPrice = negoBestPrice;
@@ -501,11 +502,11 @@ public class HomeAgent extends Agent implements GUIListener {
                         // TODo: If possible do 1 more stage
                         ACLMessage thirdMessage = message.createReply();
                         thirdMessage.setPerformative(ACLMessage.REQUEST);
-                        negoBestPrice = truncatedDouble(negoBestPrice + negoBestPrice * 0.1); // increase 10%
+                        negoBestPrice = Utilities.truncatedDouble(negoBestPrice + negoBestPrice * 0.1); // increase 10%
                         thirdMessage.setContent("" + negoBestPrice);
                         printGUI("<font color='gray' size='-1'>Stage 2:</font>");
                         System.out.println(getLocalName() + "send the third offer, which is " + negoBestPrice);
-                        printGUI(getLocalName() + " send the third offer, which is <b>$" + negoBestPrice + "</b>");
+                        printGUI(getLocalName() + " send the third offer, which is <b>$" + Utilities.truncatedDouble(negoBestPrice) + "</b>");
                         send(thirdMessage);
                     }
                 } else {
@@ -517,7 +518,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
         // 4TH --- Final decision
         // have 0s before timeout
-        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 0, negoTemplate, "4TH") {
+        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 5000, negoTemplate, "4TH") {
             public void handle(ACLMessage message) {
                 if (message != null &&  !hasNegotiationFinished) {
                     System.out.println("");
@@ -530,7 +531,7 @@ public class HomeAgent extends Agent implements GUIListener {
                     if (message.getPerformative() == ACLMessage.AGREE) {
                         System.out.println("Proposal Accepted");
                         System.out.println("Proposal Offer: $" + negoBestPrice);
-                        printGUI(bestOffer.getSender().getLocalName() + " accepted the offer for <b>$" + negoBestPrice
+                        printGUI(bestOffer.getSender().getLocalName() + " accepted the offer for <b>$" + Utilities.truncatedDouble(negoBestPrice)
                                 + "</b>");
 
                         // Assign new best price
@@ -542,7 +543,7 @@ public class HomeAgent extends Agent implements GUIListener {
                     } else {// Refuse the proposal
                         System.out.println("Propsal Refused");
                         System.out.println("Original Offer: $" + bestPrice);
-                        printGUI(bestOffer.getSender().getLocalName() + " reject the offer for <b>$" + negoBestPrice
+                        printGUI(bestOffer.getSender().getLocalName() + " reject the offer for <b>$" + Utilities.truncatedDouble(negoBestPrice)
                                 + "</b>");
                         printGUI(getLocalName() + " accepts the original offer, which is <b>$" + bestPrice + "</b>");
 
@@ -577,11 +578,11 @@ public class HomeAgent extends Agent implements GUIListener {
 
                     printGUI("");
                     printGUI("<font color='black'>---- SUMMARY ----</font>");
-                    printGUI("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
-                    printGUI("Best Price: <b>$" + bestPrice + "</b>");
+                    printGUI("Total Predicted Comsumption: " + Utilities.truncatedDouble(totalPredictedEnergyConsumption));
+                    printGUI("Best Price: <b>$" + Utilities.truncatedDouble(bestPrice) + "</b>");
                     printGUI("Best Offer: <b>"+ bestOffer.getSender().getLocalName()+"</b>");
-                    printGUI("Amount of spent money: <b>$" + truncatedDouble(spentMoney) + "</b>");
-                    printGUI("Remaining Budget: <b>$" + truncatedDouble(remainingBudget) + "</b>");
+                    printGUI("Amount of spent money: <b>$" + Utilities.truncatedDouble(spentMoney) + "</b>");
+                    printGUI("Remaining Budget: <b>$" + Utilities.truncatedDouble(remainingBudget) + "</b>");
                 } else {
                     System.out.println("Negotiation has not finished yet!!");
                 }
@@ -624,9 +625,9 @@ public class HomeAgent extends Agent implements GUIListener {
                     double overchargePrice = Double.parseDouble(message.getContent());
                     System.out.println("---------- Final Report ----------");
                     printGUI("\n<font color='black'>---- Final Report ----</font>");
-                    printGUI("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
-                    printGUI("Total Actual Comsumption: " + totalActualedEnergyConsumption);
-                    printGUI("Best Price: <b>$" + bestPrice + "</b>");
+                    printGUI("Total Predicted Comsumption: " + Utilities.truncatedDouble(totalPredictedEnergyConsumption));
+                    printGUI("Total Actual Comsumption: " + Utilities.truncatedDouble(totalActualedEnergyConsumption));
+                    printGUI("Best Price: <b>$" + Utilities.truncatedDouble(bestPrice) + "</b>");
                     printGUI("Best Offer: <b>"+ bestOffer.getSender().getLocalName()+"</b>");
 
                     System.out.println("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
@@ -635,9 +636,9 @@ public class HomeAgent extends Agent implements GUIListener {
                         //Before Overcharge GUI
                         printGUI("");
                         printGUI("<b>Before adding overcharge </b>");
-                        printGUI("Overcharge Price: <b>$" + overchargePrice + "</b>");
-                        printGUI("Amount of spent money: <b>$" + truncatedDouble(spentMoney) + "</b>");
-                        printGUI("Remaining Budget: <b>$" + truncatedDouble(remainingBudget) + "</b>");
+                        printGUI("Overcharge Price: <b>$" + Utilities.truncatedDouble(overchargePrice) + "</b>");
+                        printGUI("Amount of spent money: <b>$" + Utilities.truncatedDouble(spentMoney) + "</b>");
+                        printGUI("Remaining Budget: <b>$" + Utilities.truncatedDouble(remainingBudget) + "</b>");
                         
                         
                         System.out.println("Overcharge Price: $"+overchargePrice);
@@ -648,8 +649,8 @@ public class HomeAgent extends Agent implements GUIListener {
 
                         printGUI("");
                         printGUI("<b>After adding overcharge </b>");
-                        printGUI("Amount of spent money: <b>$" + truncatedDouble(spentMoney) + "</b>");
-                        printGUI("Remaining Budget: <b>$" + truncatedDouble(remainingBudget) + "</b>");
+                        printGUI("Amount of spent money: <b>$" + Utilities.truncatedDouble(spentMoney) + "</b>");
+                        printGUI("Remaining Budget: <b>$" + Utilities.truncatedDouble(remainingBudget) + "</b>");
                         
                         
                     }else{// No overcharge
@@ -659,8 +660,8 @@ public class HomeAgent extends Agent implements GUIListener {
                         
                         //Print GUI
                         printGUI("<b>No overcharge </b>");
-                        printGUI("Amount of spent money: <b>$" + truncatedDouble(spentMoney) + "</b>");
-                        printGUI("Remaining Budget: <b>$" + truncatedDouble(remainingBudget) + "</b>");
+                        printGUI("Amount of spent money: <b>$" + Utilities.truncatedDouble(spentMoney) + "</b>");
+                        printGUI("Remaining Budget: <b>$" + Utilities.truncatedDouble(remainingBudget) + "</b>");
                     }
                     printGUI("");
                     printGUI("NEXT ROUND");
@@ -695,7 +696,6 @@ public class HomeAgent extends Agent implements GUIListener {
             dfd.addServices(sd);
             DFService.register(this, dfd);
         } catch (FIPAException fe) {
-            // TODO: handle exception
             fe.printStackTrace();
         }
     }
@@ -737,7 +737,6 @@ public class HomeAgent extends Agent implements GUIListener {
         try {
             DFService.deregister(this);
         } catch (FIPAException fe) {
-            // TODO: handle exception
             fe.printStackTrace();
         }
 
@@ -766,68 +765,4 @@ public class HomeAgent extends Agent implements GUIListener {
         send(msg);
     }
 
-    /* --- Utility methods --- */
-    protected static int cidCnt = 0;
-    String cidBase;
-
-    /**
-     * This method is used to generate unique ID for each conversations
-     * 
-     * @return
-     */
-    private String generateCID() {
-        if (cidBase == null) {
-            cidBase = getLocalName() + hashCode() + System.currentTimeMillis() % 10000 + "_";
-        }
-        return cidBase + (cidCnt++);
-    }
-
-    /**
-     * This method is used to initialize ACLMessages
-     * 
-     * @param perf        perfomative (Ex: AGREE, PROPOSAL, REQUEST)
-     * @param content
-     * @param destination
-     * @return
-     */
-    private ACLMessage newMessage(int perf, String content, AID destination) {
-        ACLMessage message = newMessage(perf);
-        if (destination != null) {
-            message.addReceiver(destination);
-        }
-        message.setContent(content);
-        return message;
-    }
-
-    /**
-     * 
-     * @param perf
-     * @return
-     */
-    private ACLMessage newMessage(int perf) {
-        ACLMessage message = new ACLMessage(perf);
-        message.setConversationId(generateCID());
-        return message;
-    }
-
-    /**
-     * Get a random number between two numbers
-     * 
-     * @param min
-     * @param max
-     * @return random number
-     */
-    public double getRandomDouble(double min, double max) {
-        double d = (Math.random() * ((max - min) + 1)) + min;
-        return Math.round(d * 100.0) / 100.0;
-    }
-
-    /**
-     * 
-     * @param value
-     * @return round to 2 decimal numbers
-     */
-    private double truncatedDouble(double value) {
-        return java.math.BigDecimal.valueOf(value).setScale(3, java.math.RoundingMode.HALF_UP).doubleValue();
-    }
 }
