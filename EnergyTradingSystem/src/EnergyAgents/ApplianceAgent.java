@@ -314,7 +314,7 @@ public class ApplianceAgent extends Agent {
     		// this will occur when Home is running out of the budget - Appliance will stop sending request
     		sequenceCommunication.removeSubBehaviour(communicateWithHome);
 
-        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request. Stop sending the request.");
+        	System.out.println(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request. Stop sending the request for next period.");
 
 		    // print to GUI
 	        printGUI(getLocalName() + ": " + refuse.getSender().getLocalName() + " refused to the request.");
@@ -406,19 +406,21 @@ public class ApplianceAgent extends Agent {
 			// retrieve message from message queue if there is
 	        ACLMessage msg= receive(this.msgTemplate);
 	        if (msg!=null) {
-		        // print out message content to console
-		        System.out.println(getLocalName() + ": received result $" + msg.getContent() + " from " + msg.getSender().getLocalName());
-		        isReceived = true;
 		        String messageReturned = msg.getContent();
 		        
 		        // reformat message to print out the GUI
 		        if (messageReturned.compareToIgnoreCase("failure") != 0) {
 		        	messageReturned =  "$" + msg.getContent();
 		        }
+		        // print out message content to console
+		        System.out.println(getLocalName() + ": received result " + messageReturned + " from " + msg.getSender().getLocalName());
 		        
 		        // print out message content to GUI
 	        	printGUI(getLocalName() + ": received result <b>" + messageReturned + "</b> from " + msg.getSender().getLocalName());
 	        	
+	        	// stop waiting for the result message
+		        isReceived = true;
+		        
 	        	// add behaviour to report actual usage
 	        	addBehaviour(new ReportingActualEnergyUsage());
 			}else {
