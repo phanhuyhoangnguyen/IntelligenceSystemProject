@@ -50,9 +50,9 @@ public class ApplianceAgent extends Agent {
 	private static final int USAGE_DURATION = 1800000;				// 30 mins (1800s) -> specify the total usage of agent in a period of time, 30 mins.
 	private static final int HALF_HOUR = 1800000;
 
-	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
 	// ! Testing for VS Code
-	//private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
+	private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation

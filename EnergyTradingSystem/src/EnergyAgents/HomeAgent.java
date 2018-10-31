@@ -274,27 +274,25 @@ public class HomeAgent extends Agent implements GUIListener {
 
         @Override
         public void action() {
-            if(bestOffer!= null){
-                System.out.println("\nGET ACTUAL CONSUMPTION: " + getLocalName() + ": Waiting for acutal consumption....");
-    
-                // Retrieve message from message queue if there is
-                ACLMessage msg = receive(this.msgTemplate);
-                if (msg != null) {
-                    // Print out message content
-                    System.out.println("GET ACTUAL CONSUMPTION: " + getLocalName() + ": Received consumption "
-                            + msg.getContent() + " from " + msg.getSender().getLocalName());
-                    totalActualedEnergyConsumption += Double.parseDouble(msg.getContent());
-                    System.out.println("TOTAL ACTUAL CONSUMPTION: " + totalActualedEnergyConsumption);
-                    System.out.println("Count: " + count);
-                    ++count;
-                } else {
-                    // Block the behaviour from terminating and keep listening to the message
-                    block();
-                }
-                // Print out the total consumption
-                if (count == totalAppliances) {
-                    printGUI("Total Actual Consumption: <b>" + Utilities.truncatedDouble(totalActualedEnergyConsumption) + "</b>");
-                }
+            System.out.println("\nGET ACTUAL CONSUMPTION: " + getLocalName() + ": Waiting for acutal consumption....");
+
+            // Retrieve message from message queue if there is
+            ACLMessage msg = receive(this.msgTemplate);
+            if (msg != null) {
+                // Print out message content
+                System.out.println("GET ACTUAL CONSUMPTION: " + getLocalName() + ": Received consumption "
+                        + msg.getContent() + " from " + msg.getSender().getLocalName());
+                totalActualedEnergyConsumption += Double.parseDouble(msg.getContent());
+                System.out.println("TOTAL ACTUAL CONSUMPTION: " + totalActualedEnergyConsumption);
+                System.out.println("Count: " + count);
+                ++count;
+            } else {
+                // Block the behaviour from terminating and keep listening to the message
+                block();
+            }
+            // Print out the total consumption
+            if (count == totalAppliances) {
+                printGUI("Total Actual Consumption: <b>" + Utilities.truncatedDouble(totalActualedEnergyConsumption) + "</b>");
             }
         }
 
