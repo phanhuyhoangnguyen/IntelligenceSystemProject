@@ -70,8 +70,8 @@ public class HomeAgent extends Agent implements GUIListener {
         this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
         this.totalAppliances = 0;
-        //this.budgetLimit = Utilities.getRandomDouble(2000, 1000);
-        this.budgetLimit = 100;
+        this.budgetLimit = Utilities.getRandomDouble(2000, 1000);
+        this.maximumPrice = Utilities.truncatedDouble(Utilities.getRandomDouble(25, 30)/100);
 
         // Agent name and type
         this.agentName = "Home";
@@ -121,7 +121,7 @@ public class HomeAgent extends Agent implements GUIListener {
     }
 
     public void setMaximumPrice(double newPrice){
-        this.maximumPrice = newPrice;
+        this.maximumPrice = newPrice; 
     }
     /**
      * End of Getter and Setter
@@ -329,7 +329,6 @@ public class HomeAgent extends Agent implements GUIListener {
                 
                 //maximumPrice = Utilities.truncatedDouble(budgetLimit / totalPredictedEnergyConsumption); //Set the ideal Best price once had the total predicted energy consumption
                 // Tola: @Dave the idea price should depend on the market, not your budget
-                maximumPrice = Utilities.truncatedDouble(Utilities.getRandomDouble(25, 30)/100);
                 bestPrice = maximumPrice; // assign maximumPrice to best price
 
                 System.out.println("Ideal Best Price: $" + maximumPrice);
