@@ -16,11 +16,11 @@ Navigate to the Compiled directory, run command
 Bring up the main user interface
 * Start the communication by clicking on the **Start button**
 * Pause the communication, the agents will finish the current communication after the negotation completed
-* Resume the communication, the agents will continue the new proposal and negotiation
+* Resume the communication, the agents will continue the new request and negotiation
 
 
 ## Update the agents' properties
 In the main user interface
 1. select on an icon represent the agent, Home, Appliances, or Retailers
-2. select on an agent, if there is a list, then set the properties
+2. select on an agent, if there is a list, then double click to modify its properties
 3. Save
