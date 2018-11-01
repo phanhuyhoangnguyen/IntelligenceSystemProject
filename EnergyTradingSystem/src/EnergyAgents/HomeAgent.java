@@ -69,7 +69,7 @@ public class HomeAgent extends Agent implements GUIListener {
         this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
         this.totalAppliances = 0;
-        this.budgetLimit = Utilities.getRandomDouble(4000, 4000);
+        this.budgetLimit = Utilities.getRandomDouble(2000, 1000);
 
         // Agent name and type
         this.agentName = "Home";
@@ -317,7 +317,9 @@ public class HomeAgent extends Agent implements GUIListener {
                 System.out.println("Total Consumption: " + totalPredictedEnergyConsumption);
 
                 
-                idealBestPrice = budgetLimit / totalPredictedEnergyConsumption;//Set the ideal Best price once had the total predicted energy consumption
+                //idealBestPrice = Utilities.truncatedDouble(budgetLimit / totalPredictedEnergyConsumption); //Set the ideal Best price once had the total predicted energy consumption
+                // Tola: @Dave the idea price should depend on the market, not your budget
+                idealBestPrice = Utilities.truncatedDouble(Utilities.getRandomDouble(25, 30)/100);
                 bestPrice = idealBestPrice; // assign ideal best price to best price
 
                 System.out.println("Ideal Best Price: $" + idealBestPrice);
@@ -620,7 +622,9 @@ public class HomeAgent extends Agent implements GUIListener {
 
         // Get the overcharge price from retailer agent and prompt the final report
         // Have 2s before timeout
-        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 2000, negoTemplate, "Get Overcharge Price Stage") {
+        // Tola: match this template
+        MessageTemplate overchargeTemplate = MessageTemplate.MatchPerformative(ACLMessage.QUERY_REF);
+        sequentialBehaviour.addSubBehaviour(new MyReceiverBehaviour(this, 2000, overchargeTemplate, "Get Overcharge Price Stage") {
             public void handle(ACLMessage message){
                 if(message != null && bestOffer!=null && hasNegotiationFinished){
                     System.out.println("\nOvercharge Stage");

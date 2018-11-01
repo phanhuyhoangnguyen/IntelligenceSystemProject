@@ -70,7 +70,7 @@ public final class Utilities{
      * @return round to 2 decimal numbers
      */
     public static double truncatedDouble(double value) {
-        return java.math.BigDecimal.valueOf(value).setScale(3, java.math.RoundingMode.HALF_UP).doubleValue();
+        return java.math.BigDecimal.valueOf(value).setScale(2, java.math.RoundingMode.HALF_UP).doubleValue();
     }
 
     /**

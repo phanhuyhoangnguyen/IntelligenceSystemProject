@@ -93,7 +93,7 @@ public class Main {
 		retailerAgents.add( JadeController.createAgent("Today Energy", "EnergyAgents.RetailerAgent", retailerContainer) );
 		retailerAgents.add( JadeController.createAgent("Saving Energy", "EnergyAgents.RetailerAgent", retailerContainer) );
 		retailerAgents.add( JadeController.createAgent("DayTime Energy", "EnergyAgents.RetailerAgent", retailerContainer) );
-		retailerAgents.add( JadeController.createAgent("Budget Energy", "EnergyAgents.RetailerAgent", retailerContainer, new Object[]{"fixed_price", "30"}) );
+		retailerAgents.add( JadeController.createAgent("Budget Energy", "EnergyAgents.RetailerAgent", retailerContainer, new Object[]{"fixed_price", "0.40"}) );
 		retailerAgents.add( JadeController.createAgent("Yellow Energy", "EnergyAgents.RetailerAgent", retailerContainer) );
 		
 		return retailerAgents;

@@ -76,7 +76,7 @@ public class ApplianceAgent extends Agent {
 		// Appliance Agent has lived for at least 30 mins (1 row in CSV)
 		this.actualLivedSeconds = HALF_HOUR;
 		intializeAppliantDictionary();
-		System.out.println("Path to csv " + pathToCSV);
+		//System.out.println("Path to csv " + pathToCSV);
 	}
 
 	protected void setup() {

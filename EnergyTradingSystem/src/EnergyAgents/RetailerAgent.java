@@ -96,13 +96,13 @@ public class RetailerAgent extends Agent implements GUIListener{
 		agentType = "Retailer";
 		
 		demandUsage = 0;
-		fixedPrice = 30.0; // always
-		usageCharge = getRandomDouble(20.0, 30.0);	// 20 to 30 cents per kwh
+		fixedPrice = 0.35; // always
+		usageCharge = Utilities.truncatedDouble(Utilities.getRandomDouble(20, 30)/100);	// 20 to 30 cents per kwh
 		overCharge = 10;	// plus 10%
 		
 		
 		negoPrice = calcNegoPrice(0);	// calculate negoPrice based on demand
-		negoLimitPrice = truncatedDouble( usageCharge - (usageCharge * 0.15) );	// eg. no more than 15%
+		negoLimitPrice = Utilities.truncatedDouble( usageCharge - (usageCharge * 0.15) );	// eg. no more than 15%
 		negoIterateReduceBy = 0.2; // reduce 0.2 percent in each counter
 		
 		negoMechanism = Mechanism.RANDOM;
@@ -263,7 +263,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 		
 		// count the offer
 		negoCounter++;
-		return truncatedDouble(nextOffer);
+		return Utilities.truncatedDouble(nextOffer);
 	}
 
 	
@@ -293,7 +293,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 			default:
 		}
 		
-		return truncatedDouble(price);
+		return Utilities.truncatedDouble(price);
 	}
 
 
@@ -324,7 +324,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 			try {
 				double price = Double.parseDouble(args[1].toString());
 				usageCharge = price;
-				negoLimitPrice = truncatedDouble( usageCharge - (usageCharge * 0.15) );
+				negoLimitPrice = Utilities.truncatedDouble( usageCharge - (usageCharge * 0.15) );
 			}catch(Exception ex) {}
 			
 		}// end args loop
@@ -504,7 +504,6 @@ public class RetailerAgent extends Agent implements GUIListener{
 					case ACLMessage.AGREE:
 						System.out.println( agentName + " completed for $" + negoPrice);
 						printGUI( agentName + " completed for <b>$" + negoPrice + "</b>");
-						// TODO: sign new contract
 						reply.setPerformative(ACLMessage.AGREE);
 						reply.setContent(Double.toString(negoPrice));
 						break;
@@ -523,7 +522,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 							double  actualPrice = Double.parseDouble(content);
 							// over charge
 							if ( actualPrice > demandUsage ) {
-								double calOverCharge = truncatedDouble( negoPrice * (1 + (overCharge/100)) );
+								double calOverCharge = Utilities.truncatedDouble( negoPrice * (1 + (overCharge/100)) );
 								System.out.println("Send overcharge price: $"+ calOverCharge);
 								reply.setPerformative(ACLMessage.QUERY_REF);
 								reply.setContent(String.valueOf(calOverCharge));
@@ -597,20 +596,6 @@ public class RetailerAgent extends Agent implements GUIListener{
 		
 	}
 	
-	
-	/**
-	 * Helper functions
-	 */
-	private double truncatedDouble(double value) {
-		return java.math.BigDecimal.valueOf(value).setScale(3, java.math.RoundingMode.HALF_UP).doubleValue();
-	}
-	
-	public double getRandomDouble(double min, double max){
-	    double d = (Math.random()*((max-min)+1))+min;
-	    return Math.round(d*100.0)/100.0;
-	}
-	
-		
 	
 	
 	
