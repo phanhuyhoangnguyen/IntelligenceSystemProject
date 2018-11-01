@@ -5,9 +5,9 @@ It performs on FIPA interaction protocol specification to communicate and negoti
 
 
 ## How to run the application
-    1. It can be run by clicking the batch file **RUN_ME.bat** in the root directory.
+1. It can be run by clicking the batch file **RUN_ME.bat** in the root directory.
     
-	2. Run from command line
+2. Run from command line
 	Navigate to the Compiled directory, run command 
 	> java -jar ./HomeEnergySys.jar
 	
