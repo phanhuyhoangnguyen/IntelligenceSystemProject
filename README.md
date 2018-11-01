@@ -28,6 +28,6 @@ In the main user interface
 2. After the modification, click "Save" to apply your changes.
 
 
-##Tool and IDE
+## Tool and IDE
 The application has been developed in Eclipse Photon 4.8.0 2018 JAVA DEVELOPMENT IDE.
 Java version 1.8.0
