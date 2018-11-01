@@ -42,7 +42,8 @@ public class HomeAgent extends Agent implements GUIListener {
     private double budgetLimit;//   budget of home agent
     private double remainingBudget;// The remaining budget
 
-    private double spentMoney;// The used money
+    private double predictedPayment;// The predicted payment
+    private double actualPayment;// The actual payment
     
     private double idealBestPrice; // the best price that home agent wish
     private double bestPrice; // the best price from the best offer
@@ -87,7 +88,8 @@ public class HomeAgent extends Agent implements GUIListener {
         this.totalPredictedEnergyConsumption = 0;
         this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
-        this.spentMoney = 0;
+        this.predictedPayment = 0;
+        this.actualPayment = 0;
         this.budgetLimit = this.remainingBudget;// set to remaining budget
         
 
@@ -575,19 +577,16 @@ public class HomeAgent extends Agent implements GUIListener {
                     System.out.println("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
                     System.out.println("Best Price: $" + bestPrice);
 
-                    spentMoney = totalPredictedEnergyConsumption*bestPrice;// calculate spent money after get the best offer
-                    System.out.println("Amount of spent money: $" + spentMoney);
+                    predictedPayment = totalPredictedEnergyConsumption*bestPrice;// calculate spent money after get the best offer
+                    System.out.println("Amount of predicted payment: $" + predictedPayment);
 
-                    remainingBudget = budgetLimit - spentMoney;// calculate the budget remaining
-                    System.out.println("Remaining Budget: $" + remainingBudget);
 
                     printGUI("");
                     printGUI("<font color='black'>---- SUMMARY ----</font>");
                     printGUI("Total Predicted Comsumption: " + Utilities.truncatedDouble(totalPredictedEnergyConsumption));
                     printGUI("Best Price: <b>$" + Utilities.truncatedDouble(bestPrice) + "</b>");
                     printGUI("Best Offer: <b>"+ bestOffer.getSender().getLocalName()+"</b>");
-                    printGUI("Amount of spent money: <b>$" + Utilities.truncatedDouble(spentMoney) + "</b>");
-                    printGUI("Remaining Budget: <b>$" + Utilities.truncatedDouble(remainingBudget) + "</b>");
+                    printGUI("Amount of predicted payment: <b>$" + Utilities.truncatedDouble(predictedPayment) + "</b>");
                 } else {
                     System.out.println("Negotiation has not finished yet!!");
                 }
@@ -640,35 +639,42 @@ public class HomeAgent extends Agent implements GUIListener {
 
                     System.out.println("Total Predicted Comsumption: " + totalPredictedEnergyConsumption);
                     System.out.println("Total Actual Comsumption: " + totalActualedEnergyConsumption);
+
+                    //Calculate the actual payment
+                    actualPayment = bestPrice * totalActualedEnergyConsumption;
+                    remainingBudget = budgetLimit - actualPayment;
+
+                    //Overacharge part
                     if(overchargePrice != 0){// get overchage
                         //Before Overcharge GUI
                         printGUI("");
                         printGUI("<b>Before adding overcharge </b>");
                         printGUI("Overcharge Price: <b>$" + Utilities.truncatedDouble(overchargePrice) + "</b>");
-                        printGUI("Amount of spent money: <b>$" + Utilities.truncatedDouble(spentMoney) + "</b>");
+                        printGUI("Amount of predicted payment: <b>$" + Utilities.truncatedDouble(predictedPayment) + "</b>");
+                        printGUI("Amount of actual payment: <b>$" + Utilities.truncatedDouble(actualPayment) + "</b>");
                         printGUI("Remaining Budget: <b>$" + Utilities.truncatedDouble(remainingBudget) + "</b>");
                         
                         
                         System.out.println("Overcharge Price: $"+overchargePrice);
-                        spentMoney = spentMoney + overchargePrice;
-                        System.out.println("Amount of spent money: $"+spentMoney);
-                        remainingBudget = budgetLimit - spentMoney;
+                        actualPayment = actualPayment + overchargePrice;
+                        System.out.println("Amount of actual payment: $"+actualPayment);
+                        remainingBudget = budgetLimit - actualPayment;
                         System.out.println("Remaining Budget: $"+remainingBudget);
 
                         printGUI("");
                         printGUI("<b>After adding overcharge </b>");
-                        printGUI("Amount of spent money: <b>$" + Utilities.truncatedDouble(spentMoney) + "</b>");
+                        printGUI("Amount of actual payment: <b>$" + Utilities.truncatedDouble(actualPayment) + "</b>");
                         printGUI("Remaining Budget: <b>$" + Utilities.truncatedDouble(remainingBudget) + "</b>");
                         
                         
                     }else{// No overcharge
                         System.out.println("No Overcharge");
-                        System.out.println("Amount of spent money: $"+spentMoney);
+                        System.out.println("Amount of actual payment: $"+actualPayment);
                         System.out.println("Remaining Budget: $"+remainingBudget);
                         
                         //Print GUI
                         printGUI("<b>No overcharge </b>");
-                        printGUI("Amount of spent money: <b>$" + Utilities.truncatedDouble(spentMoney) + "</b>");
+                        printGUI("Amount of actual payment: <b>$" + Utilities.truncatedDouble(actualPayment) + "</b>");
                         printGUI("Remaining Budget: <b>$" + Utilities.truncatedDouble(remainingBudget) + "</b>");
                     }
                     printGUI("");
