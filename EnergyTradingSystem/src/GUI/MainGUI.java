@@ -276,6 +276,7 @@ public class MainGUI extends JFrame {
 			
 			System.out.println("Main GUI: start negotiation.");
 			
+			
 			// Invoke appliance agents
 			Properties pp = new Properties();
 			pp.setProperty(Profile.MAIN_HOST, JadeController.MAINHOST);
@@ -329,12 +330,14 @@ public class MainGUI extends JFrame {
 			// enable disable button
 			isNegoPaused = !isNegoPaused;
 			if ( isNegoPaused ) {
+				System.out.println("Main GUI: pause negotiation.");
 				mPauseButton.setText(" Resume ");
 			}else {
+				System.out.println("Main GUI: resume negotiation.");
 				mPauseButton.setText(" Pause ");
 			}
 						
-			System.out.println("Main GUI: pause negotiation.");
+			
 			
 			// Invoke appliance agents
 			Properties pp = new Properties();

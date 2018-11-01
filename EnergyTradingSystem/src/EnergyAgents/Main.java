@@ -17,7 +17,7 @@ import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
 import EnergyAgents.RetailerAgent;
 import GUI.MainGUI;
-import database.DbHelper;
+
 
 public class Main {
 
@@ -28,7 +28,7 @@ public class Main {
 		JadeController.start();
 		
 		// Create Print GUI
-		createPrintAgent();
+		AgentController printAgent = createPrintAgent();
 		
 		// Create Retailer agents
 		try {
@@ -66,6 +66,7 @@ public class Main {
 					MainGUI mainGUI = new MainGUI();
 					
 					// attach the agents list
+					mainGUI.setPrintAgent(printAgent);
 					mainGUI.setRetailerAgents(retailerAgents);
 					mainGUI.setApplianceAgents(applianceAgents);
 					mainGUI.setHomeAgent(homeAgent);
@@ -92,7 +93,7 @@ public class Main {
 		retailerAgents.add( JadeController.createAgent("Today Energy", "EnergyAgents.RetailerAgent", retailerContainer) );
 		retailerAgents.add( JadeController.createAgent("Saving Energy", "EnergyAgents.RetailerAgent", retailerContainer) );
 		retailerAgents.add( JadeController.createAgent("DayTime Energy", "EnergyAgents.RetailerAgent", retailerContainer) );
-		retailerAgents.add( JadeController.createAgent("Budget Energy", "EnergyAgents.RetailerAgent", retailerContainer) );
+		retailerAgents.add( JadeController.createAgent("Budget Energy", "EnergyAgents.RetailerAgent", retailerContainer, new Object[]{"fixed_price", "30"}) );
 		retailerAgents.add( JadeController.createAgent("Yellow Energy", "EnergyAgents.RetailerAgent", retailerContainer) );
 		
 		return retailerAgents;
@@ -129,8 +130,8 @@ public class Main {
 	}
 	
 	
-	private static void createPrintAgent() {
-		JadeController.createAgent(PrintAgent.AGENT_NAME, "EnergyAgents.PrintAgent", null);
+	private static AgentController createPrintAgent() {
+		return JadeController.createAgent(PrintAgent.AGENT_NAME, "EnergyAgents.PrintAgent", null);
 	}
 	
 	private static void createRetailerTest() {

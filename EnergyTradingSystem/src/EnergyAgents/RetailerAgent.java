@@ -20,7 +20,7 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.proto.ContractNetInitiator;
 import jade.proto.ContractNetResponder;
-import database.DbHelper;
+
 import GUI.*;
 /**
  * Retailer Agent: 
@@ -443,7 +443,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 							System.out.println( agentName + " sends expire message");
 							printGUI( agentName + "sends time-out");
 							reply.setPerformative(ACLMessage.REFUSE);
-							reply.setContent("0");
+							reply.setContent(Double.toString(negoPrice));
 							break;
 						}
 						
@@ -610,44 +610,7 @@ public class RetailerAgent extends Agent implements GUIListener{
 	    return Math.round(d*100.0)/100.0;
 	}
 	
-	/* --- NOT USE --- */
-	
-	
-	
-	/**
-	 * Database for saving configuration
-	 
-	
-	private void createTable() {
-		String tableName = "Retailler_tb";
 		
-		Map<String, String> columns = new LinkedHashMap();
-		
-		
-		columns.put("id", "INTEGER PRIMARY KEY AUTOINCREMENT");
-		columns.put("aid", "VARCHAR(255)");		// agent id
-		columns.put("usageCharge", "DECIMAL");	// price in cent per khw
-		columns.put("overCharge", "DECIMAL");	// price in cent per khw
-
-		columns.put("negoPrice", "DECIMAL");	// negotiation price for every iteration
-		columns.put("negoMechanism", "VARCHAR(32)");	// negotiation mechanism: by time or on demand				
-		columns.put("negoLimit", "DECIMAL");	// limit amount , no less than 25 cents offer
-		
-		//columns.put("waitingTime", "INTEGER");	// in hour
-		
-		// Buy from Home
-		columns.put("buyFrom", "VARCHAR(255)");
-		columns.put("buyAmount", "DECIMAL");
-		columns.put("buyPrice", "DECIMAL");
-		
-		DbHelper db = new DbHelper();
-		if( db.connect() ) {
-			db.dropTable(tableName);
-			db.createTable(tableName, columns);
-		}
-	}
-	*/
-	
 	
 	
 	

@@ -6,9 +6,13 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import database.DbHelper;
 import jade.core.Agent;
 
+/**
+ * ApplianceEnergyProducerAgent - depricated
+ * @author Phan - 101042618
+ * @Description The applicant agent to generate energy
+ */
 public class ApplianceEnergyProducerAgent extends ApplianceAgent implements EnergyGenerator {
 	
 	protected void setup(String applicantID, double energyDefaultUsage, double energyDefaultProduction) {	// these data is taken from database and passed in from parameters
