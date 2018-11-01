@@ -83,7 +83,7 @@ public class RetailerTest extends Agent {
 			Enumeration e = responses.elements();
 			while (e.hasMoreElements()) {
 				ACLMessage msg = (ACLMessage) e.nextElement();
-				System.out.println("Propose from " + msg.getSender().getLocalName() + " for " + msg.getContent());
+				//System.out.println("Propose from " + msg.getSender().getLocalName() + " for " + msg.getContent());
 				
 				// get the offer price
 				double proposePrice = 0.0;
@@ -130,8 +130,10 @@ public class RetailerTest extends Agent {
 				
 				// start negotiate
 				System.out.println(myAgent.getLocalName() + " start negotiate with " + successAgent.getLocalName());
+				printGUI("----- Start Negotiation -----");
 				printGUI(myAgent.getLocalName() + " start negotiate with " + successAgent.getLocalName());
 				
+				successACL.setProtocol(FIPANames.InteractionProtocol.FIPA_PROPOSE);
 				successACL.setPerformative(ACLMessage.PROPOSE);
 				// can you lower by 10 percent
 				successACL.setContent(String.valueOf(offerPrice*(1-0.10)));
@@ -147,8 +149,8 @@ public class RetailerTest extends Agent {
 		}
 		
 		protected void handlePropose(ACLMessage propose, Vector v) {
-			System.out.println("Agent "+propose.getSender().getName()+" proposed "+propose.getContent());
-			printGUI(myAgent.getLocalName() + " received a propose " + propose.getContent() + " from " + propose.getSender().getLocalName());
+			System.out.println(myAgent.getLocalName() + " received a propose " + propose.getContent() + " from " + propose.getSender().getLocalName());
+			printGUI(myAgent.getLocalName() + " received a propose <b>" + propose.getContent() + "</b> from " + propose.getSender().getLocalName());
 		}
 		
 		protected void handleRefuse(ACLMessage refuse) {
@@ -187,47 +189,44 @@ public class RetailerTest extends Agent {
 				String senderName = sender.getLocalName();
 				System.out.println( getLocalName() + " receives " + msg.getContent() + " from " + senderName);
 				
-				// get content
-				String content = msg.getContent();
-			
-				// create a reply message
-				ACLMessage reply = msg.createReply();
-			
-				
-				// correspondent for individual response from home agent
+				// correspondent for individual response
 				switch(msg.getPerformative()) {
 					case ACLMessage.PROPOSE:
 						double myBudget = 25.00;
-						
 						double offer = 0;
+						
+						// get content
+						String content = msg.getContent();
+						// create a reply message
+						ACLMessage reply = msg.createReply();
+					
 						try {
 							offer = Double.parseDouble(content);
 						}catch ( NumberFormatException nfe) {
-							reply.setPerformative(ACLMessage.NOT_UNDERSTOOD);
-							reply.setContent("NOT UNDERSTOOD");
 							break;
 						}
 						
 						// if the offer greater than budget, deny
 						if ( offer > myBudget ) {
-							System.out.println( getLocalName() + " reject the counter offer");
-							printGUI( getLocalName() + " reject the counter offer");
+							System.out.println( getLocalName() + " reject the counter offer from " + msg.getSender().getLocalName());
+							printGUI( getLocalName() + " reject the counter offer from " + msg.getSender().getLocalName());
 							reply.setPerformative(ACLMessage.REFUSE);
 							reply.setContent("Sorry, that's beyond my budget");
 						}else {
 							//TODO: negotiation by 10 percent
 							// accept
-							System.out.println( getLocalName() + " accept the offer");
-							printGUI(getLocalName() + " accept the offer");
+							System.out.println( getLocalName() + " accept the offer from " + msg.getSender().getLocalName());
+							printGUI(getLocalName() + " accept the offer from " + msg.getSender().getLocalName());
 							reply.setPerformative(ACLMessage.AGREE);
 							reply.setContent("Thanks for your offer.");
 						}
-						
+						// send back
+						myAgent.send(reply);
+					
 					break;
 				} // end switch
 				
-				// send back
-				myAgent.send(reply);
+				
 				
 			} else {
 				// wait for message

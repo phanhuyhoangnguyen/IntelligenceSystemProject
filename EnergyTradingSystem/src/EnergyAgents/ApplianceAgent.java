@@ -29,7 +29,7 @@ import com.opencsv.CSVReaderBuilder;
 
 import GUI.GUIListener;
 import GUI.RetailerGUIDetails;
-import database.DbHelper;
+
 
 /**
  * ApplianceAgent
@@ -50,9 +50,13 @@ public class ApplianceAgent extends Agent {
 	private static final int HALF_HOUR = 1800000;
 
 	// CSV path for Eclipse
-	private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
-	// ! CSV path for VS Code
-	// private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
+	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	
+	// !Dave: CSV path for VS Code
+	//private static final String pathToCSV = "./EnergyTradingSystem/src/database/Electricity_P_DS.csv";
+	
+	//Tola: csv path, working well in different IDE
+	private static final String pathToCSV = System.getProperty("user.dir") + "\\Data\\Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation
@@ -72,6 +76,7 @@ public class ApplianceAgent extends Agent {
 		// Appliance Agent has lived for at least 30 mins (1 row in CSV)
 		this.actualLivedSeconds = HALF_HOUR;
 		intializeAppliantDictionary();
+		System.out.println("Path to csv " + pathToCSV);
 	}
 
 	protected void setup() {
