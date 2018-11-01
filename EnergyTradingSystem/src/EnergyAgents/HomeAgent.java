@@ -45,13 +45,13 @@ public class HomeAgent extends Agent implements GUIListener {
     private double predictedPayment;// The predicted payment
     private double actualPayment;// The actual payment
     
-    private double idealBestPrice; // the best price that home agent wish
+    private double maximumPrice; // the best price that home agent wish
     private double bestPrice; // the best price from the best offer
     private double negoBestPrice;// get the new offer price based on the current offer
 
     //To check whether negotiation is finished
     private boolean hasNegotiationFinished;
-    private boolean hasOffer;
+    private boolean areAbleToNegotitate;
 
     // Tola: check if get all appliances
     private boolean isApplianceFinished;
@@ -70,7 +70,8 @@ public class HomeAgent extends Agent implements GUIListener {
         this.totalActualedEnergyConsumption = 0;
         this.applianceCount = 0;
         this.totalAppliances = 0;
-        this.budgetLimit = Utilities.getRandomDouble(2000, 1000);
+        //this.budgetLimit = Utilities.getRandomDouble(2000, 1000);
+        this.budgetLimit = 100;
 
         // Agent name and type
         this.agentName = "Home";
@@ -78,8 +79,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
         // Conditions for communication
         this.hasNegotiationFinished = false;
-        this.hasOffer = true;
-
+        this.areAbleToNegotitate = true;
         // For negotiation
         this.bestOffer = null;
     }
@@ -115,6 +115,14 @@ public class HomeAgent extends Agent implements GUIListener {
         this.budgetLimit = newBudgetLimit;
     }
 
+
+    public double getMaximumPrice(){
+        return this.maximumPrice;
+    }
+
+    public void setMaximumPrice(double newPrice){
+        this.maximumPrice = newPrice;
+    }
     /**
      * End of Getter and Setter
      */
@@ -160,7 +168,7 @@ public class HomeAgent extends Agent implements GUIListener {
         }
 
         protected ACLMessage handleRequest(ACLMessage request) throws NotUnderstoodException, RefuseException {
-            if(hasOffer){//budget is enough
+            if(areAbleToNegotitate){//budget is enough
                 System.out.println("");
                 System.out.println(getLocalName() + ": REQUEST received from " + request.getSender().getLocalName()
                         + ".\nThe received demand is " + request.getContent() + "");
@@ -214,7 +222,7 @@ public class HomeAgent extends Agent implements GUIListener {
         // associated action and return the result of the action
         protected ACLMessage prepareResultNotification(ACLMessage request, ACLMessage response)
                 throws FailureException {
-            if(hasOffer){
+            if(areAbleToNegotitate){
                 return response;
             }else{
                 System.out.println(getLocalName() + ": refusing to the request and responding with REFUSE");
@@ -316,22 +324,27 @@ public class HomeAgent extends Agent implements GUIListener {
             public void handleElapsedTimeout() {
                 System.out.println("**** NEGOTIATION **** ");
                 System.out.println("Home Budget: " + budgetLimit);
-                System.out.println("Total Consumption: " + totalPredictedEnergyConsumption);
+                System.out.println("Total Predicted Consumption: " + totalPredictedEnergyConsumption);
 
                 
-                //idealBestPrice = Utilities.truncatedDouble(budgetLimit / totalPredictedEnergyConsumption); //Set the ideal Best price once had the total predicted energy consumption
+                //maximumPrice = Utilities.truncatedDouble(budgetLimit / totalPredictedEnergyConsumption); //Set the ideal Best price once had the total predicted energy consumption
                 // Tola: @Dave the idea price should depend on the market, not your budget
-                idealBestPrice = Utilities.truncatedDouble(Utilities.getRandomDouble(25, 30)/100);
-                bestPrice = idealBestPrice; // assign ideal best price to best price
+                maximumPrice = Utilities.truncatedDouble(Utilities.getRandomDouble(25, 30)/100);
+                bestPrice = maximumPrice; // assign maximumPrice to best price
 
-                System.out.println("Ideal Best Price: $" + idealBestPrice);
+                System.out.println("Ideal Best Price: $" + maximumPrice);
                 System.out.println("");
                 // Print to GUI
                 printGUI("<font color='black'>---- NEGOTIATION ---- </font> ");
                 printGUI("Home Budget: <b>$" + Utilities.truncatedDouble(budgetLimit) + "</b>");
-                printGUI("Total Consumption: <b>" + Utilities.truncatedDouble(totalPredictedEnergyConsumption) + "</b>");
-                printGUI("Ideal Best Price: <b>$" + Utilities.truncatedDouble(idealBestPrice)+"</b>");
+                printGUI("Total Predicted Consumption: <b>" + Utilities.truncatedDouble(totalPredictedEnergyConsumption) + "</b>");
+                printGUI("Ideal Best Price: <b>$" + Utilities.truncatedDouble(maximumPrice)+"</b>");
                 printGUI("");
+
+                //If exceed the money
+                if((budgetLimit-(maximumPrice*totalPredictedEnergyConsumption))<0){
+                    areAbleToNegotitate = false;
+                }
             }
         });
 
@@ -360,7 +373,7 @@ public class HomeAgent extends Agent implements GUIListener {
                             System.out.println(offer + " < " + bestPrice);
 
                             // Compare with budgetLimit
-                            if (offer <= bestPrice) {
+                            if (offer <= bestPrice && areAbleToNegotitate) {
                                 bestPrice = offer;// set new better limit
                                 bestOffer = message;
                             }
@@ -389,17 +402,17 @@ public class HomeAgent extends Agent implements GUIListener {
             public void handleElapsedTimeout() {
                 if (bestOffer == null) {
                     System.out.println("No offers.");
-                    hasOffer = false;
+                    areAbleToNegotitate = false;
                     printGUI("There is no suitable offer.");
                 } else {
                     System.out.println("");
                     System.out.println("2ND");
                     System.out.println("Best Price $" + bestPrice + " from " + bestOffer.getSender().getLocalName());
-                    System.out.println("Ideal Best Price: " + idealBestPrice);
+                    System.out.println("Ideal Best Price: " + maximumPrice);
 
                     printGUI("");
                     ACLMessage reply = bestOffer.createReply();
-                    if (bestPrice > idealBestPrice * 0.8) {// negotiate the new price if the original offer is not good
+                    if (bestPrice > maximumPrice * 0.8) {// negotiate the new price if the original offer is not good
                                                            // (reduce 20% of ideal best price)
 
                         reply.setPerformative(ACLMessage.REQUEST);
@@ -410,7 +423,7 @@ public class HomeAgent extends Agent implements GUIListener {
 
                         printGUI("The best offer is from " + bestOffer.getSender().getLocalName() + ", which is <b>$"
                                 + Utilities.truncatedDouble(bestPrice)+"</b>");
-                        printGUI("Ideal Best Price: <b>$" + Utilities.truncatedDouble(idealBestPrice)+"</b>");
+                        printGUI("Ideal Best Price: <b>$" + Utilities.truncatedDouble(maximumPrice)+"</b>");
                         printGUI("<font color='gray'>---- Start Negotiation -----</font>");
                         printGUI("<font color='gray' size='-1'>Stage 1:</font>");
                         System.out.println("Negotiation: Asking for price at $" + reply.getContent());
@@ -452,7 +465,7 @@ public class HomeAgent extends Agent implements GUIListener {
                     // Get the counter offer from retailer
                     if (message.getPerformative() == ACLMessage.REQUEST) {
                         ACLMessage reply = message.createReply();
-                        if (bestPrice > idealBestPrice) {// negotiate the new price
+                        if (bestPrice > maximumPrice) {// negotiate the new price
                             reply.setPerformative(ACLMessage.REQUEST);
                             try {
                                 double offer = Double.parseDouble(bestOffer.getContent());
