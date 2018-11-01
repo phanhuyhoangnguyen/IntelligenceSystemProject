@@ -215,7 +215,6 @@ public class MainGUI extends JFrame {
 						if ( homeAgent != null) {
 							JadeController.showAgentGUI(homeAgent);
 						}
-						System.out.println("Home click");
 						break;
 						
 					case "appliance":
@@ -247,7 +246,6 @@ public class MainGUI extends JFrame {
 								}
 							});
 						}
-						System.out.println("Retailer click");
 						break;
 				}
 				

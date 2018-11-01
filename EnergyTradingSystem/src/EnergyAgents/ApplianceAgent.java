@@ -50,13 +50,13 @@ public class ApplianceAgent extends Agent {
 	private static final int HALF_HOUR = 1800000;
 
 	// CSV path for Eclipse
-	//private static final String pathToCSV = "./src/database/Electricity_P_DS.csv";
+	//private static final String pathToCSV = "./src/Data/Electricity_P_DS.csv";
 	
 	// !Dave: CSV path for VS Code
-	private static final String pathToCSV = "./EnergyTradingSystem/Data/Electricity_P_DS.csv";
+	//private static final String pathToCSV = "./EnergyTradingSystem/Data/Electricity_P_DS.csv";
 	
 	//Tola: csv path, working well in different IDE
-	//private static final String pathToCSV = System.getProperty("user.dir") + "\\Data\\Electricity_P_DS.csv";
+	private static final String pathToCSV = System.getProperty("user.dir") + "\\Data\\Electricity_P_DS.csv";
 	
 	// For prediction
 	private static final int LIVED_DAYS = 15;						// 15 days: number of days agents have lived in the stimulation

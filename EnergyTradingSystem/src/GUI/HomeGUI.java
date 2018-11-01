@@ -83,17 +83,14 @@ public class HomeGUI {
 			txtBudget.setText( Double.toString(myAgent.getBudgetLimit()) );
 			inputPane.add(txtBudget);
 
-			JPanel inputPane1 = new JPanel();
-			inputPane1.setLayout(new GridLayout(0, 2, 2, 5));	// row,col, vspace, hspace
-			inputPane1.setBorder(new EmptyBorder(15, 15, 15, 15));
 			
 			JLabel l2 = new JLabel("Maximum Price :", SwingConstants.RIGHT);
 			l2.setPreferredSize(l2.getPreferredSize());
-			inputPane1.add(l2);
+			inputPane.add(l2);
 			
 			JTextField txtMaximumPrice = new JTextField(16);
 			txtMaximumPrice.setText( Double.toString(myAgent.getMaximumPrice()) );
-			inputPane1.add(txtMaximumPrice);
+			inputPane.add(txtMaximumPrice);
 			
 			
 			// button group
@@ -143,7 +140,6 @@ public class HomeGUI {
 			Container pane = getContentPane();
 			pane.add(lblAgentName, BorderLayout.NORTH);
 			pane.add(inputPane, BorderLayout.WEST);
-			pane.add(inputPane1, BorderLayout.EAST);
 			pane.add(buttonPane, BorderLayout.SOUTH);
 			
 			pack();

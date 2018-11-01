@@ -519,10 +519,12 @@ public class RetailerAgent extends Agent implements GUIListener{
 					
 					case ACLMessage.QUERY_REF:
 						try {
-							double  actualPrice = Double.parseDouble(content);
+							double  actualUsage = Double.parseDouble(content);
 							// over charge
-							if ( actualPrice > demandUsage ) {
-								double calOverCharge = Utilities.truncatedDouble( negoPrice * (1 + (overCharge/100)) );
+							if ( actualUsage > demandUsage ) {
+								double overUsage = actualUsage - demandUsage;
+								double price = negoPrice + ( negoPrice * (overCharge/100) );
+								double calOverCharge = Utilities.truncatedDouble( overUsage * price );
 								System.out.println("Send overcharge price: $"+ calOverCharge);
 								reply.setPerformative(ACLMessage.QUERY_REF);
 								reply.setContent(String.valueOf(calOverCharge));
