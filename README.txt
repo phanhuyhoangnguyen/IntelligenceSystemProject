@@ -25,9 +25,9 @@ Update the agents' properties
 -----------------------------
 In the main user interface
 1. Select on an icon represent the agent, Home, Appliances, or Retailers. Depend on different Agent Type, there will be different options to modify the Agent Properties.
-1.1 If the Agent is Home, new pop-up windows will be appeared to modify its property
-1.2 If the Agent is Retailer, you can set the properties by clicking the "Set Properties" button on the right side of the window
-1.3 There is no option to modify Appliance Agent, since its generated data is extracted from the provided CSV file.
+    1.1 If the Agent is Home, new pop-up windows will be appeared to modify its property
+    1.2 If the Agent is Retailer, you can set the properties by clicking the "Set Properties" button on the right side of the window
+    1.3 There is no option to modify Appliance Agent, since its generated data is extracted from the provided CSV file.
 2. After the modification, click "Save" to apply your changes.
 
 
