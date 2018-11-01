@@ -8,8 +8,8 @@ It performs on FIPA interaction protocol specification to communicate and negoti
 1. It can be run by clicking the batch file **RUN_ME.bat** in the root directory.
     
 2. Run from command line
-	Navigate to the Compiled directory, run command 
-	> java -jar ./HomeEnergySys.jar
+Navigate to the Compiled directory, run command 
+	> #>java -jar ./HomeEnergySys.jar
 	
     
 ## How to start the agents communication
